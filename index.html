@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAUNDRY24 주간 피드백</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<style>
+  :root{
+    --paper:#F7F8FA;
+    --card:#FFFFFF;
+    --ink:#1A1D29;
+    --ink-soft:#8B92A5;
+    --line:#EEF0F3;
+    --teal:#14B8A6;
+    --teal-soft:#E7FAF7;
+    --coral:#EF4444;
+    --coral-soft:#FEECEC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Pretendard Variable','Pretendard',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .panel{
+    width:100%; max-width:380px; padding:40px 32px;
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+    text-align:center;
+  }
+  .badge{
+    display:inline-block; font-size:12px; font-weight:700; color:var(--teal);
+    background:var(--teal-soft); border-radius:999px; padding:5px 14px; margin-bottom:16px;
+  }
+  h1{font-size:22px; font-weight:700; margin:0 0 6px; letter-spacing:-.01em;}
+  p.desc{font-size:13px; color:var(--ink-soft); margin:0 0 32px; line-height:1.6;}
+  .login-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    width:100%; font-family:inherit; font-size:14px; font-weight:600;
+    padding:13px 16px; border-radius:10px; border:1px solid var(--line);
+    background:#fff; color:var(--ink); cursor:pointer; margin-bottom:10px;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .login-btn:hover{ border-color:var(--teal); background:var(--teal-soft); }
+  .login-btn:disabled{ opacity:.6; cursor:default; }
+  .login-btn svg{ width:18px; height:18px; flex-shrink:0; }
+  .error-box{
+    margin-top:16px; padding:12px 14px; border-radius:10px;
+    background:var(--coral-soft); color:var(--coral); font-size:13px; text-align:left; line-height:1.6;
+    display:none;
+  }
+</style>
+</head>
+<body>
+<div class="panel">
+  <span class="badge">상담 품질 리뷰</span>
+  <h1>LAUNDRY24 주간 피드백</h1>
+  <p class="desc">구글 계정으로 로그인해 주세요.<br>역할에 따라 어드민 또는 담당자 화면으로 자동 연결됩니다.</p>
+
+  <button class="login-btn" id="loginBtn" onclick="login()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.35 11.1h-9.17v2.92h5.27c-.23 1.45-1.7 4.25-5.27 4.25-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.43l2.53-2.44C16.96 4.04 14.81 3 12.18 3 7.13 3 3 7.13 3 12.18s4.13 9.18 9.18 9.18c5.3 0 8.82-3.72 8.82-8.96 0-.6-.07-1.06-.15-1.3z"/></svg>
+    구글 계정으로 로그인
+  </button>
+
+  <div class="error-box" id="errorBox"></div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://dnazztgpzfpcezsadyaz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_cuPnQYSO5_hIoNvfLovPPw_VFUnx0u4';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function showError(msg){
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+
+async function login(){
+  document.getElementById('loginBtn').disabled = true;
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: location.href }
+  });
+}
+window.login = login;
+
+async function routeByRole(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return; // 아직 로그인 안 됨, 버튼 누르길 대기
+
+  const email = session.user.email;
+  const { data: account, error } = await supabase
+    .from('account_roles')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error || !account){
+    showError(`${email} 계정은 등록되어 있지 않습니다. 어드민에게 계정 등록을 요청해주세요.`);
+    document.getElementById('loginBtn').disabled = false;
+    return;
+  }
+
+  if (account.role === 'admin'){
+    location.href = 'admin.html';
+  } else {
+    location.href = 'agent.html';
+  }
+}
+
+routeByRole();
+</script>
+</body>
+</html>

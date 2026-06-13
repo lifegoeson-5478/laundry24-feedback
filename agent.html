@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAUNDRY24 주간 피드백 · 담당자</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<style>
+  :root{
+    --paper:#F7F8FA;
+    --card:#FFFFFF;
+    --ink:#1A1D29;
+    --ink-soft:#8B92A5;
+    --line:#EEF0F3;
+    --teal:#14B8A6;
+    --teal-soft:#E7FAF7;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Pretendard Variable','Pretendard',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.6;
+  }
+  .app{max-width:640px; margin:0 auto; padding:28px 24px 80px;}
+  header.topbar{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom:24px; padding-bottom:18px; border-bottom:1px solid var(--line);
+  }
+  header.topbar .eyebrow{
+    font-size:12px; letter-spacing:.08em;
+    color:var(--ink-soft); text-transform:uppercase; margin:0 0 6px; font-weight:600;
+  }
+  header.topbar h1{
+    font-weight:700; font-size:24px; margin:0; letter-spacing:-.01em;
+  }
+  .logout-btn{
+    font-family:inherit; font-size:13px; font-weight:600;
+    padding:9px 16px; border:1px solid var(--line); border-radius:999px;
+    background:var(--card); color:var(--ink-soft); cursor:pointer;
+  }
+  .logout-btn:hover{ border-color:var(--teal); color:var(--teal); }
+
+  .week-label{font-size:13px; color:var(--ink-soft); margin:0 0 18px;}
+
+  .consult-list{display:flex; flex-direction:column; gap:8px;}
+
+  .agent-feedback-card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:16px 18px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .agent-feedback-card .fhead{
+    display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;
+  }
+  .agent-feedback-card .ctitle{font-size:14px; font-weight:700; margin:0 0 2px;}
+  .agent-feedback-card .csub{font-size:12px; color:var(--ink-soft); margin:0;}
+  .agent-feedback-card .avgscore{
+    font-size:13px; font-weight:700; color:var(--teal); background:var(--teal-soft);
+    border-radius:999px; padding:4px 12px; white-space:nowrap;
+  }
+  .feedback-note{
+    background:var(--paper); border-radius:10px; padding:12px 14px;
+  }
+  .feedback-note .ftag{
+    font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 6px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .feedback-note p{font-size:13px; margin:0; color:var(--ink);}
+  .feedback-note.empty p{color:var(--ink-soft);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">상담 품질 리뷰 · 담당자</p>
+      <h1>LAUNDRY24 주간 피드백</h1>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="logout-btn" id="adminBackBtn" style="display:none;" onclick="location.href='admin.html'">어드민으로</button>
+      <button class="logout-btn" onclick="logout()">로그아웃</button>
+    </div>
+  </header>
+
+  <p class="week-label" id="weekLabel">2026.06.08 ~ 06.14 · 팀장/매니저 검토를 종합한 내용입니다</p>
+  <div class="consult-list" id="agentCards"></div>
+
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+/* 아래 두 값을 본인 Supabase 프로젝트 정보로 교체하세요. */
+const SUPABASE_URL = 'https://dnazztgpzfpcezsadyaz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_cuPnQYSO5_hIoNvfLovPPw_VFUnx0u4';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function logout(){
+  await supabase.auth.signOut();
+  location.href = 'index.html';
+}
+window.logout = logout;
+
+async function init(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session){
+    location.href = 'index.html';
+    return;
+  }
+
+  const { data: account } = await supabase
+    .from('account_roles')
+    .select('*')
+    .eq('email', session.user.email)
+    .maybeSingle();
+
+  if (!account || !account.agent_id){
+    alert('담당자 계정으로 등록되어 있지 않습니다.');
+    await supabase.auth.signOut();
+    location.href = 'index.html';
+    return;
+  }
+
+  if (account.role === 'admin'){
+    document.getElementById('adminBackBtn').style.display = '';
+  }
+
+  await renderAgentView(account.agent_id);
+}
+
+async function renderAgentView(agentId){
+  const { data: agent } = await supabase.from('agents').select('*').eq('id', agentId).maybeSingle();
+  const { data: items } = await supabase
+    .from('consultations')
+    .select('*')
+    .eq('agent_id', agentId)
+    .order('id');
+
+  if (agent) {
+    document.getElementById('weekLabel').textContent =
+      `2026.06.08 ~ 06.14 · ${agent.name}님의 피드백 · 팀장/매니저 검토를 종합한 내용입니다`;
+  }
+
+  const container = document.getElementById('agentCards');
+  const reviewed = (items || []).filter(c => c.lead_score != null || c.mgr_score != null);
+
+  if (!reviewed.length){
+    container.innerHTML = `<div class="agent-feedback-card"><p class="csub" style="margin:0;">아직 등록된 피드백이 없습니다.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = reviewed.map(c => {
+    const scores = [c.lead_score, c.mgr_score].filter(v => v != null).map(Number);
+    const avg = scores.length ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1) : '-';
+    const sub = (c.sub || '').split(' · ').slice(1).join(' · ');
+    const note = c.synthesized
+      ? `<div class="feedback-note"><p class="ftag"><i class="ti ti-sparkles" style="font-size:14px;" aria-hidden="true"></i>리뷰 피드백</p><p>${c.synthesized}</p></div>`
+      : `<div class="feedback-note empty"><p class="ftag">리뷰 피드백</p><p>코멘트 없음</p></div>`;
+    return `
+    <div class="agent-feedback-card">
+      <div class="fhead">
+        <div>
+          <p class="ctitle">${c.title}</p>
+          <p class="csub">${sub}</p>
+        </div>
+        <span class="avgscore">평균 ${avg} / 5</span>
+      </div>
+      ${note}
+    </div>`;
+  }).join('');
+}
+
+init().catch(err => {
+  document.getElementById('agentCards').innerHTML = `<div class="agent-feedback-card">
+    <p class="csub" style="margin:0;">데이터를 불러오지 못했습니다. SUPABASE_URL / SUPABASE_ANON_KEY 설정을 확인해주세요.<br>
+    <span style="font-size:12px;">${err.message || err}</span></p>
+  </div>`;
+  console.error(err);
+});
+</script>
+</body>
+</html>
