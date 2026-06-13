@@ -98,10 +98,11 @@
   .sw.me{background:var(--teal);}
   .sw.team{background:#D7DBE2;}
 
-  .bar-block{margin-bottom:28px; position:relative;}
+  .bar-block{margin-bottom:28px;}
   .bar-block .bname{font-size:13px; font-weight:600; margin:0 0 6px;}
+  .bar-track-wrap{position:relative;}
   .team-marker{
-    position:absolute; top:18px; transform:translateX(-50%);
+    position:absolute; bottom:100%; transform:translateX(-50%);
     display:flex; flex-direction:column; align-items:center;
     font-size:11px; font-weight:700; color:var(--ink); white-space:nowrap;
   }
@@ -287,7 +288,7 @@
 
   <header class="topbar">
     <div>
-      <p class="eyebrow">상담 품질 리뷰 · 프로토타입</p>
+      <p class="eyebrow">상담 품질 리뷰</p>
       <h1>LAUNDRY24 주간 피드백</h1>
     </div>
     <nav class="tabs">
@@ -392,7 +393,7 @@ window.TEAM_AVG = { tone: 0, effort: 0, resolution: 0, recontact: 0, escalation:
 window.AGENTS = [];
 window.AI_SUMMARIES = {};
 window.CONSULTATIONS = [];
-window.REVIEW_THRESHOLD = 2.5;
+window.REVIEW_THRESHOLD = 20;
 
 function mapConsultation(row){
   return {
@@ -537,11 +538,11 @@ function renderSummary(){
       <div class="metric-row">
         <div class="metric">
           <p class="label">톤/매너</p>
-          <p class="value ${flagBadge(a.tone, TEAM_AVG.tone, true)}">${a.tone.toFixed(1)}</p>
+          <p class="value ${flagBadge(a.tone, TEAM_AVG.tone, true)}">${Math.round(a.tone)}</p>
         </div>
         <div class="metric">
           <p class="label">처리 노력도</p>
-          <p class="value ${flagBadge(a.effort, TEAM_AVG.effort, true)}">${a.effort.toFixed(1)}</p>
+          <p class="value ${flagBadge(a.effort, TEAM_AVG.effort, true)}">${Math.round(a.effort)}</p>
         </div>
         <div class="metric">
           <p class="label">문제해결율</p>
@@ -566,16 +567,18 @@ function bar(label, value, teamValue, max, unit){
   return `
   <div class="bar-block">
     <p class="bname">${label}</p>
-    <div class="team-marker" style="left:${teamPct}%">
-      팀 평균
-      <span class="arrow"></span>
-    </div>
-    <div class="bar-track">
-      <div class="bar-fill me" style="width:${pct}%"></div>
+    <div class="bar-track-wrap">
+      <div class="team-marker" style="left:${teamPct}%">
+        팀 평균
+        <span class="arrow"></span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill me" style="width:${pct}%"></div>
+      </div>
     </div>
     <div class="bar-vals">
-      <span>${Math.round(value * 100) / 100}${unit}</span>
-      <span>팀 평균 ${Math.round(teamValue * 100) / 100}${unit}</span>
+      <span>${Math.round(value)}${unit}</span>
+      <span>팀 평균 ${Math.round(teamValue)}${unit}</span>
     </div>
   </div>`;
 }
@@ -592,8 +595,8 @@ function renderCompare(agentId){
   document.getElementById('cmpName').textContent = a.name;
   document.getElementById('cmpMeta').textContent = `2026.06.08 ~ 06.14 · ${a.meta}`;
   document.getElementById('cmpBars').innerHTML =
-    bar('톤/매너', a.tone, TEAM_AVG.tone, 5, '') +
-    bar('처리 노력도', a.effort, TEAM_AVG.effort, 5, '') +
+    bar('톤/매너', a.tone, TEAM_AVG.tone, 100, '') +
+    bar('처리 노력도', a.effort, TEAM_AVG.effort, 100, '') +
     bar('문제해결율', a.resolution, TEAM_AVG.resolution, 100, '%') +
     bar('재접수율', a.recontact, TEAM_AVG.recontact, 20, '%') +
     bar('민원 이관율', a.escalation, TEAM_AVG.escalation, 20, '%');
@@ -621,7 +624,7 @@ function consultRow(c){
         <p class="csub">${c.sub}</p>
       </div>
       <div class="right">
-        <span class="score ${scoreCls}">AI ${c.overall.toFixed(1)}</span>
+        <span class="score ${scoreCls}">AI ${Math.round(c.overall)}</span>
         <span class="status ${cls}">${label}</span>
       </div>
     </div>`;
@@ -824,8 +827,8 @@ function renderDetail(id){
     <div class="ai-box">
       <p class="tag">AI 1차 분석</p>
       <div class="ai-grid">
-        <div><span class="k">상담 톤/매너</span><span class="v">${c.ai.tone.toFixed(1)} / 5</span></div>
-        <div><span class="k">처리 노력도</span><span class="v">${c.ai.effort.toFixed(1)} / 5</span></div>
+        <div><span class="k">상담 톤/매너</span><span class="v">${Math.round(c.ai.tone)} / 100</span></div>
+        <div><span class="k">처리 노력도</span><span class="v">${Math.round(c.ai.effort)} / 100</span></div>
         <div><span class="k">문제해결 여부</span><span class="v ${c.ai.resolution.includes('재발') ? 'flagv' : ''}">${c.ai.resolution}</span></div>
         <div><span class="k">재접수 여부</span><span class="v ${c.ai.recontactFlag.includes('발생') || c.ai.recontactFlag.includes('재접수') ? 'flagv' : ''}">${c.ai.recontactFlag}</span></div>
       </div>
@@ -836,7 +839,7 @@ function renderDetail(id){
         <div class="rhead">
           <p>팀장 검토</p>
           <select id="leadScore">
-            ${['5','4.5','4','3.5','3','2.5','2'].map(v => `<option ${v===c.review.leadScore?'selected':''}>${v}</option>`).join('')}
+            ${['100','90','80','70','60','50','40'].map(v => `<option ${v===c.review.leadScore?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
         <textarea rows="3" placeholder="코멘트를 입력하세요" id="leadComment">${c.review.leadComment}</textarea>
@@ -845,7 +848,7 @@ function renderDetail(id){
         <div class="rhead">
           <p>매니저 검토</p>
           <select id="mgrScore">
-            ${['5','4.5','4','3.5','3','2.5','2'].map(v => `<option ${v===c.review.mgrScore?'selected':''}>${v}</option>`).join('')}
+            ${['100','90','80','70','60','50','40'].map(v => `<option ${v===c.review.mgrScore?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
         <textarea rows="3" placeholder="코멘트를 입력하세요" id="mgrComment">${c.review.mgrComment}</textarea>
