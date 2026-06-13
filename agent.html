@@ -75,7 +75,7 @@
 
   <header class="topbar">
     <div>
-      <p class="eyebrow">상담 품질 리뷰 · 담당자</p>
+      <p class="eyebrow">상담 품질 리뷰</p>
       <h1>LAUNDRY24 주간 피드백</h1>
     </div>
     <div style="display:flex; gap:8px;">
@@ -141,7 +141,7 @@ async function renderAgentView(agentId){
 
   if (agent) {
     document.getElementById('weekLabel').textContent =
-      `2026.06.08 ~ 06.14 · ${agent.name}님의 피드백 · 팀장/매니저 검토를 종합한 내용입니다`;
+      `2026.06.08 ~ 06.14 · ${agent.name}님의 상담건에 대해 AI 피드백 및 관리자 검토를 종합한 내용입니다`;
   }
 
   const container = document.getElementById('agentCards');
@@ -154,7 +154,7 @@ async function renderAgentView(agentId){
 
   container.innerHTML = reviewed.map(c => {
     const scores = [c.lead_score, c.mgr_score].filter(v => v != null).map(Number);
-    const avg = scores.length ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1) : '-';
+    const avg = scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : '-';
     const sub = (c.sub || '').split(' · ').slice(1).join(' · ');
     const note = c.synthesized
       ? `<div class="feedback-note"><p class="ftag"><i class="ti ti-sparkles" style="font-size:14px;" aria-hidden="true"></i>리뷰 피드백</p><p>${c.synthesized}</p></div>`
@@ -166,7 +166,7 @@ async function renderAgentView(agentId){
           <p class="ctitle">${c.title}</p>
           <p class="csub">${sub}</p>
         </div>
-        <span class="avgscore">평균 ${avg} / 5</span>
+        <span class="avgscore">평균 ${avg} / 100</span>
       </div>
       ${note}
     </div>`;
