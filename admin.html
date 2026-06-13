@@ -360,6 +360,9 @@
     </div>
 
     <div class="consult-list" id="accountList"></div>
+
+    <p class="week-label" style="margin-top:2rem;">이번 주 담당자별 민원 이관 건수를 입력하세요. (상담 건수 대비 비율로 환산되어 주간요약/비교 화면에 표시됩니다)</p>
+    <div class="account-form" id="escalationForm" style="grid-template-columns:1fr auto;"></div>
   </div>
 
 </div>
@@ -448,7 +451,8 @@ async function loadData(){
       effort: g ? g.effort / g.count : 0,
       resolution: g ? Math.round((g.resolved / g.count) * 100) : 0,
       recontact: g ? Math.round((g.recontact / g.count) * 100) : 0,
-      escalation: Number(a.escalation || 0)
+      escalation: g && g.count ? Math.round((Number(a.escalation_count || 0) / g.count) * 100) : 0,
+      escalationCount: Number(a.escalation_count || 0)
     };
   });
 
@@ -459,12 +463,14 @@ async function loadData(){
     return acc;
   }, { count: 0, tone: 0, effort: 0, resolved: 0, recontact: 0 });
 
+  const totalEscalation = (agents || []).reduce((sum, a) => sum + Number(a.escalation_count || 0), 0);
+
   window.TEAM_AVG = totals.count ? {
     tone: totals.tone / totals.count,
     effort: totals.effort / totals.count,
     resolution: Math.round((totals.resolved / totals.count) * 100),
     recontact: Math.round((totals.recontact / totals.count) * 100),
-    escalation: teamAvg ? Number(teamAvg.escalation || 0) : 0
+    escalation: Math.round((totalEscalation / totals.count) * 100)
   } : { tone: 0, effort: 0, resolution: 0, recontact: 0, escalation: 0 };
 
   window.AI_SUMMARIES = {};
@@ -657,6 +663,7 @@ function onAccRoleChange(){
 async function renderAccounts(){
   fillAgentSelect();
   onAccRoleChange();
+  renderEscalationForm();
 
   const { data, error } = await supabase.from('account_roles').select('*').order('role').order('email');
   if (error){
@@ -709,6 +716,32 @@ async function deleteAccount(email){
   const { error } = await supabase.from('account_roles').delete().eq('email', email);
   if (error){ alert('삭제에 실패했습니다: ' + error.message); return; }
   renderAccounts();
+}
+
+function renderEscalationForm(){
+  const form = document.getElementById('escalationForm');
+  form.innerHTML = AGENTS.map(a => `
+    <label style="display:flex; align-items:center; font-size:13px; font-weight:600; height:36px;">${a.name}</label>
+    <input type="number" min="0" step="1" id="esc-${a.id}" value="${a.escalationCount ?? 0}" style="width:100%;">
+  `).join('') + `<button class="add-btn" style="grid-column:1 / -1;" onclick="saveEscalation()">민원 건수 저장</button>`;
+}
+
+async function saveEscalation(){
+  const updates = AGENTS.map(a => ({
+    id: a.id,
+    escalation_count: Number(document.getElementById(`esc-${a.id}`).value || 0)
+  }));
+
+  for (const u of updates){
+    const { error } = await supabase.from('agents').update({ escalation_count: u.escalation_count }).eq('id', u.id);
+    if (error){ alert(`저장 실패 (${u.id}): ${error.message}`); return; }
+  }
+
+  alert('민원 이관 건수가 저장되었습니다.');
+  await loadData();
+  renderSummary();
+  renderCompare(currentAgent);
+  renderEscalationForm();
 }
 
 function toggleAutoPass(){
@@ -840,6 +873,7 @@ window.completeReview = completeReview;
 window.onAccRoleChange = onAccRoleChange;
 window.addAccount = addAccount;
 window.deleteAccount = deleteAccount;
+window.saveEscalation = saveEscalation;
 
 /* ---------------- 로그인/권한 확인 ---------------- */
 async function requireAdmin(){
