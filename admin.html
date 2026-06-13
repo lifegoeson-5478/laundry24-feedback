@@ -393,7 +393,7 @@ window.TEAM_AVG = { tone: 0, effort: 0, resolution: 0, recontact: 0, escalation:
 window.AGENTS = [];
 window.AI_SUMMARIES = {};
 window.CONSULTATIONS = [];
-window.REVIEW_THRESHOLD = 20;
+window.REVIEW_THRESHOLD = 50;
 
 function mapConsultation(row){
   return {
@@ -562,23 +562,27 @@ function renderSummary(){
 }
 
 function bar(label, value, teamValue, max, unit){
-  const pct = Math.min(100, (value/max)*100);
-  const teamPct = Math.min(100, (teamValue/max)*100);
+  const clamp = v => Math.max(0, Math.min(max, v));
+  const v = clamp(value), tv = clamp(teamValue);
+  const pct = (v/max)*100;
+  const teamPct = (tv/max)*100;
+  const markerHtml = tv > 0 ? `
+      <div class="team-marker" style="left:${teamPct}%">
+        팀 평균
+        <span class="arrow"></span>
+      </div>` : '';
   return `
   <div class="bar-block">
     <p class="bname">${label}</p>
     <div class="bar-track-wrap">
-      <div class="team-marker" style="left:${teamPct}%">
-        팀 평균
-        <span class="arrow"></span>
-      </div>
+      ${markerHtml}
       <div class="bar-track">
         <div class="bar-fill me" style="width:${pct}%"></div>
       </div>
     </div>
     <div class="bar-vals">
-      <span>${Math.round(value)}${unit}</span>
-      <span>팀 평균 ${Math.round(teamValue)}${unit}</span>
+      <span>${Math.round(v)}${unit}</span>
+      <span>팀 평균 ${Math.round(tv)}${unit}</span>
     </div>
   </div>`;
 }
