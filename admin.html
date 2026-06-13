@@ -95,7 +95,7 @@
   .legend{display:flex; gap:18px; font-size:12px; color:var(--ink-soft); margin-bottom:10px;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .legend .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
-  .sw.me{background:var(--coral);}
+  .sw.me{background:var(--teal);}
   .sw.team{background:#D7DBE2;}
 
   .bar-block{margin-bottom:16px;}
@@ -104,7 +104,7 @@
     background:var(--paper); border-radius:6px; height:14px; position:relative; overflow:hidden; margin-bottom:4px;
   }
   .bar-fill{height:100%; border-radius:6px; position:absolute; top:0; left:0;}
-  .bar-fill.me{background:var(--coral);}
+  .bar-fill.me{background:var(--teal);}
   .bar-fill.team{background:#D7DBE2; opacity:.9;}
   .bar-fill.team-line{
     position:absolute; top:0; bottom:0; width:2px; background:var(--ink-soft);
@@ -284,7 +284,7 @@
     <nav class="tabs">
       <button class="active" data-view="summary" onclick="showView('summary')">주간 요약</button>
       <button data-view="compare" onclick="showView('compare')">담당자 비교</button>
-      <button data-view="list" onclick="showView('list')">상담 목록</button>
+      <button data-view="list" onclick="listFilterAgent=null; showView('list')">상담 목록</button>
       <button data-view="accounts" onclick="showView('accounts')">계정 관리</button>
       <button onclick="logout()">로그아웃</button>
     </nav>
@@ -315,14 +315,14 @@
       <p id="cmpSummary"></p>
     </div>
     <div class="actions">
-      <button onclick="showView('list')">이 담당자의 상담 보기 &rarr;</button>
+      <button onclick="showAgentConsultations(currentAgent)">이 담당자의 상담 보기 &rarr;</button>
     </div>
   </div>
 
   <!-- ===== VIEW 3: 상담 목록 ===== -->
   <div class="view" id="view-list">
     <button class="back-link" onclick="showView('summary')">&larr; 주간 요약으로</button>
-    <p class="week-label">2026.06.08 ~ 06.14 · 담당자 전체</p>
+    <p class="week-label" id="listWeekLabel">2026.06.08 ~ 06.14 · 담당자 전체</p>
 
     <div class="filter-stats" id="filterStats"></div>
 
@@ -562,8 +562,8 @@ function bar(label, value, teamValue, max, unit){
       <div class="bar-fill team-line" style="left:${teamPct}%"></div>
     </div>
     <div class="bar-vals">
-      <span>${value}${unit}</span>
-      <span>팀 평균 ${teamValue}${unit}</span>
+      <span>${Math.round(value * 100) / 100}${unit}</span>
+      <span>팀 평균 ${Math.round(teamValue * 100) / 100}${unit}</span>
     </div>
   </div>`;
 }
@@ -616,13 +616,40 @@ function consultRow(c){
 
 let autoOpen = false;
 
+let listFilterAgent = null;
+
+function showAgentConsultations(agentId){
+  listFilterAgent = agentId;
+  showView('list');
+}
+window.showAgentConsultations = showAgentConsultations;
+
+function clearListFilter(){
+  listFilterAgent = null;
+  renderList();
+}
+window.clearListFilter = clearListFilter;
+
 function renderList(){
-  const reviewItems = CONSULTATIONS.filter(needsReview);
-  const autoItems = CONSULTATIONS.filter(c => !needsReview(c));
+  const filtered = listFilterAgent
+    ? CONSULTATIONS.filter(c => c.agentId === listFilterAgent)
+    : CONSULTATIONS;
+
+  const reviewItems = filtered.filter(needsReview);
+  const autoItems = filtered.filter(c => !needsReview(c));
+
+  const label = document.getElementById('listWeekLabel');
+  if (listFilterAgent){
+    const a = AGENTS.find(x => x.id === listFilterAgent);
+    label.innerHTML = `2026.06.08 ~ 06.14 · ${a ? a.name : listFilterAgent}님의 상담 ` +
+      `<button class="back-link" style="display:inline; margin:0 0 0 8px;" onclick="clearListFilter()">전체 보기 ✕</button>`;
+  } else {
+    label.textContent = '2026.06.08 ~ 06.14 · 담당자 전체';
+  }
 
   document.getElementById('filterStats').innerHTML = `
     <div class="stat">
-      <p class="n">${CONSULTATIONS.length}건</p>
+      <p class="n">${filtered.length}건</p>
       <p class="l">전체 처리</p>
     </div>
     <div class="stat review">
@@ -826,6 +853,7 @@ function showView(name){
   const tabBtn = document.querySelector(`nav.tabs button[data-view="${name}"]`);
   if (tabBtn) tabBtn.classList.add('active');
   if (name === 'accounts') renderAccounts();
+  if (name === 'list') renderList();
 }
 
 function openCompare(agentId){
