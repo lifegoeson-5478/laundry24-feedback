@@ -98,8 +98,17 @@
   .sw.me{background:var(--teal);}
   .sw.team{background:#D7DBE2;}
 
-  .bar-block{margin-bottom:16px;}
+  .bar-block{margin-bottom:28px; position:relative;}
   .bar-block .bname{font-size:13px; font-weight:600; margin:0 0 6px;}
+  .team-marker{
+    position:absolute; top:18px; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center;
+    font-size:11px; font-weight:700; color:var(--ink); white-space:nowrap;
+  }
+  .team-marker .arrow{
+    width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent;
+    border-top:5px solid var(--ink); margin-top:2px;
+  }
   .bar-track{
     background:var(--paper); border-radius:6px; height:14px; position:relative; overflow:hidden; margin-bottom:4px;
   }
@@ -315,7 +324,7 @@
       <p id="cmpSummary"></p>
     </div>
     <div class="actions">
-      <button onclick="showAgentConsultations(currentAgent)">이 담당자의 상담 보기 &rarr;</button>
+      <button id="viewAgentConsultsBtn">이 담당자의 상담 보기 &rarr;</button>
     </div>
   </div>
 
@@ -557,9 +566,12 @@ function bar(label, value, teamValue, max, unit){
   return `
   <div class="bar-block">
     <p class="bname">${label}</p>
+    <div class="team-marker" style="left:${teamPct}%">
+      팀 평균
+      <span class="arrow"></span>
+    </div>
     <div class="bar-track">
       <div class="bar-fill me" style="width:${pct}%"></div>
-      <div class="bar-fill team-line" style="left:${teamPct}%"></div>
     </div>
     <div class="bar-vals">
       <span>${Math.round(value * 100) / 100}${unit}</span>
@@ -586,6 +598,7 @@ function renderCompare(agentId){
     bar('재접수율', a.recontact, TEAM_AVG.recontact, 20, '%') +
     bar('민원 이관율', a.escalation, TEAM_AVG.escalation, 20, '%');
   document.getElementById('cmpSummary').textContent = AI_SUMMARIES[agentId] || '아직 AI 요약이 없습니다.';
+  document.getElementById('viewAgentConsultsBtn').onclick = () => showAgentConsultations(agentId);
 }
 
 function consultRow(c){
