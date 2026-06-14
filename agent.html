@@ -145,14 +145,54 @@ async function renderAgentView(agentId){
   }
 
   const container = document.getElementById('agentCards');
-  const reviewed = (items || []).filter(c => c.lead_score != null || c.mgr_score != null);
+  const all = (items || []).filter(c => c.status !== 'skipped');
+  const reviewed = all.filter(c => c.lead_score != null || c.mgr_score != null);
+
+  // 주간 요약 카드 계산
+  const count = all.length;
+  const tone = count ? Math.round(all.reduce((s,c) => s + Number(c.ai_tone||0), 0) / count) : 0;
+  const effort = count ? Math.round(all.reduce((s,c) => s + Number(c.ai_effort||0), 0) / count) : 0;
+  const resolution = count ? Math.round((all.filter(c => c.ai_resolution === '해결됨').length / count) * 100) : 0;
+  const recontact = count ? Math.round((all.filter(c => c.recontact_ref).length / count) * 100) : 0;
+  const escalation = count && agent?.escalation_count
+    ? Math.round((Number(agent.escalation_count) / count) * 100) : 0;
+
+  const summaryCard = `
+  <div style="background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:18px; box-shadow:0 1px 2px rgba(16,24,40,.04);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <p style="font-size:16px; font-weight:700; margin:0;">${agent?.name || ''}님의 이번 주</p>
+      <span style="font-size:12px; color:var(--ink-soft);">상담 ${count}건</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:8px;">
+      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
+        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">톤/매너</p>
+        <p style="font-size:16px; font-weight:700; margin:0; color:var(--teal);">${tone}</p>
+      </div>
+      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
+        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">처리 노력도</p>
+        <p style="font-size:16px; font-weight:700; margin:0; color:var(--teal);">${effort}</p>
+      </div>
+      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
+        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">문제해결율</p>
+        <p style="font-size:16px; font-weight:700; margin:0; color:var(--teal);">${resolution}%</p>
+      </div>
+      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
+        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">재접수율</p>
+        <p style="font-size:16px; font-weight:700; margin:0; ${recontact > 5 ? 'color:var(--coral)' : 'color:var(--ink)'};">${recontact}%</p>
+      </div>
+      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
+        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">민원 이관율</p>
+        <p style="font-size:16px; font-weight:700; margin:0; ${escalation > 5 ? 'color:var(--coral)' : 'color:var(--ink)'};">${escalation}%</p>
+      </div>
+    </div>
+  </div>`;
 
   if (!reviewed.length){
-    container.innerHTML = `<div class="agent-feedback-card"><p class="csub" style="margin:0;">아직 등록된 피드백이 없습니다.</p></div>`;
+    container.innerHTML = summaryCard + `<div class="agent-feedback-card"><p class="csub" style="margin:0;">아직 등록된 피드백이 없습니다.</p></div>`;
     return;
   }
 
-  container.innerHTML = reviewed.map(c => {
+  container.innerHTML = summaryCard + reviewed.map(c => {
     const scores = [c.lead_score, c.mgr_score].filter(v => v != null).map(Number);
     const avg = scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : '-';
     const sub = (c.sub || '').split(' · ').slice(1).join(' · ');
