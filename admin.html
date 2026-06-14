@@ -923,15 +923,35 @@ async function completeReview(id){
   const mgrScore = document.getElementById('mgrScore').value;
   const mgrComment = document.getElementById('mgrComment').value;
 
-  // 두 검토자의 코멘트를 AI로 합성 (담당자에게 보일 synthesized 필드)
+  // AI로 두 코멘트를 합성 (누가 썼는지 드러나지 않게)
   let synthesized = null;
   const comments = [leadComment, mgrComment].filter(Boolean);
-  if (comments.length) {
-    const scores = [leadScore, mgrScore].filter(Boolean).map(Number);
-    const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
-    synthesized = comments.join(' / ');
-    if (avgScore) synthesized = `[종합 ${avgScore}점] ${synthesized}`;
+  if (comments.length === 1) {
+    synthesized = comments[0];
+  } else if (comments.length === 2) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 300,
+          messages: [{
+            role: 'user',
+            content: `아래 두 검토자의 코멘트를 하나의 자연스러운 피드백으로 합쳐주세요. 누가 썼는지 드러나지 않게, 중복 내용은 한 번만, 2~3문장의 한국어로 작성하세요. 다른 설명 없이 합쳐진 피드백 문장만 출력하세요.\n\n코멘트 1: ${leadComment}\n코멘트 2: ${mgrComment}`
+          }]
+        })
+      });
+      const data = await res.json();
+      synthesized = data.content?.[0]?.text?.trim() || comments.join(' / ');
+    } catch {
+      synthesized = comments.join(' / ');
+    }
   }
+
+  const scores = [leadScore, mgrScore].filter(Boolean).map(Number);
+  const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+  if (synthesized && avgScore) synthesized = `[종합 ${avgScore}점] ${synthesized}`;
 
   const { error } = await supabase.from('consultations').update({
     lead_score: leadScore ? Number(leadScore) : null,
