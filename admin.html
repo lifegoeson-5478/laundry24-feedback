@@ -893,24 +893,66 @@ function openDetail(id){
   showView('detail');
 }
 
-function saveDraft(id){
+async function saveDraft(id){
   const c = CONSULTATIONS.find(x => x.id === id);
-  c.review.leadScore = document.getElementById('leadScore').value;
-  c.review.leadComment = document.getElementById('leadComment').value;
-  c.review.mgrScore = document.getElementById('mgrScore').value;
-  c.review.mgrComment = document.getElementById('mgrComment').value;
-  alert('초안으로 저장되었습니다. (프로토타입: 새로고침 시 초기화됩니다)');
+  const leadScore = document.getElementById('leadScore').value;
+  const leadComment = document.getElementById('leadComment').value;
+  const mgrScore = document.getElementById('mgrScore').value;
+  const mgrComment = document.getElementById('mgrComment').value;
+
+  const { error } = await supabase.from('consultations').update({
+    lead_score: leadScore ? Number(leadScore) : null,
+    lead_comment: leadComment || null,
+    mgr_score: mgrScore ? Number(mgrScore) : null,
+    mgr_comment: mgrComment || null,
+  }).eq('id', id);
+
+  if (error) { alert('저장 실패: ' + error.message); return; }
+
+  c.review.leadScore = leadScore;
+  c.review.leadComment = leadComment;
+  c.review.mgrScore = mgrScore;
+  c.review.mgrComment = mgrComment;
+  alert('초안으로 저장되었습니다.');
 }
 
-function completeReview(id){
+async function completeReview(id){
   const c = CONSULTATIONS.find(x => x.id === id);
-  c.review.leadScore = document.getElementById('leadScore').value;
-  c.review.leadComment = document.getElementById('leadComment').value;
-  c.review.mgrScore = document.getElementById('mgrScore').value;
-  c.review.mgrComment = document.getElementById('mgrComment').value;
+  const leadScore = document.getElementById('leadScore').value;
+  const leadComment = document.getElementById('leadComment').value;
+  const mgrScore = document.getElementById('mgrScore').value;
+  const mgrComment = document.getElementById('mgrComment').value;
+
+  // 두 검토자의 코멘트를 AI로 합성 (담당자에게 보일 synthesized 필드)
+  let synthesized = null;
+  const comments = [leadComment, mgrComment].filter(Boolean);
+  if (comments.length) {
+    const scores = [leadScore, mgrScore].filter(Boolean).map(Number);
+    const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+    synthesized = comments.join(' / ');
+    if (avgScore) synthesized = `[종합 ${avgScore}점] ${synthesized}`;
+  }
+
+  const { error } = await supabase.from('consultations').update({
+    lead_score: leadScore ? Number(leadScore) : null,
+    lead_comment: leadComment || null,
+    mgr_score: mgrScore ? Number(mgrScore) : null,
+    mgr_comment: mgrComment || null,
+    status: 'done',
+    status_label: '검토 완료',
+    synthesized,
+  }).eq('id', id);
+
+  if (error) { alert('저장 실패: ' + error.message); return; }
+
+  c.review.leadScore = leadScore;
+  c.review.leadComment = leadComment;
+  c.review.mgrScore = mgrScore;
+  c.review.mgrComment = mgrComment;
   c.status = 'done';
   c.statusLabel = '검토 완료';
-  alert('검토 완료로 표시되었습니다.');
+  c.synthesized = synthesized;
+  alert('검토 완료로 저장되었습니다.');
   showView('list');
   renderList();
 }
