@@ -816,8 +816,14 @@ function renderDetail(id){
     <div class="recontact-box">
       <p class="tag">재접수 발생 · ${c.recontact.days}일 후 상담 #${c.recontact.ref}과 동일 문의 (유사도 ${c.recontact.similarity}%)</p>
       <p>${c.recontact.note}</p>
-      <button onclick="openDetail('${c.recontact.ref}')">재접수 상담 #${c.recontact.ref} 보기</button>
-    </div>` : '';
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button onclick="openDetail('${c.recontact.ref}')">재접수 상담 #${c.recontact.ref} 보기</button>
+        <button onclick="cancelRecontact('${c.id}')" style="border-color:var(--coral); color:var(--coral);">재접수 아님 (취소)</button>
+      </div>
+    </div>` : `
+    <div style="margin-bottom:14px;">
+      <button onclick="confirmRecontact('${c.id}')" style="font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; font-weight:600; font-family:inherit;">+ 재접수로 직접 표시</button>
+    </div>`;
 
   document.getElementById('detailCard').innerHTML = `
     <div class="detail-head">
@@ -916,6 +922,41 @@ window.openCompare = openCompare;
 window.openDetail = openDetail;
 window.showView = showView;
 window.toggleAutoPass = toggleAutoPass;
+async function cancelRecontact(consultationId){
+  if (!confirm('이 상담의 재접수 표시를 취소할까요? (AI 자동 분류를 사람이 직접 수정합니다)')) return;
+  const { error } = await supabase.from('consultations').update({
+    recontact_ref: null,
+    recontact_days: null,
+    recontact_similarity: null,
+    recontact_note: null,
+    ai_recontact_flag: '없음',
+  }).eq('id', consultationId);
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  await loadData();
+  renderList();
+  openDetail(consultationId);
+}
+
+async function confirmRecontact(consultationId){
+  const refId = prompt('재접수 원본 상담 ID를 입력하세요 (상담 목록에서 확인 가능):');
+  if (!refId) return;
+  const refC = CONSULTATIONS.find(x => x.id === refId.trim());
+  if (!refC) { alert('해당 ID의 상담을 찾을 수 없습니다.'); return; }
+  const { error } = await supabase.from('consultations').update({
+    recontact_ref: consultationId,
+    recontact_days: 0,
+    recontact_similarity: 100,
+    recontact_note: '어드민이 수동으로 재접수 표시',
+    ai_recontact_flag: '재접수 발생',
+  }).eq('id', refId.trim());
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  await loadData();
+  renderList();
+  openDetail(consultationId);
+}
+
+window.cancelRecontact = cancelRecontact;
+window.confirmRecontact = confirmRecontact;
 window.saveDraft = saveDraft;
 window.completeReview = completeReview;
 window.onAccRoleChange = onAccRoleChange;
