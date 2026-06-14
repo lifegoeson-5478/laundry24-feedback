@@ -930,20 +930,16 @@ async function completeReview(id){
     synthesized = comments[0];
   } else if (comments.length === 2) {
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 300,
-          messages: [{
-            role: 'user',
-            content: `아래 두 검토자의 코멘트를 하나의 자연스러운 피드백으로 합쳐주세요. 누가 썼는지 드러나지 않게, 중복 내용은 한 번만, 2~3문장의 한국어로 작성하세요. 다른 설명 없이 합쳐진 피드백 문장만 출력하세요.\n\n코멘트 1: ${leadComment}\n코멘트 2: ${mgrComment}`
-          }]
-        })
-      });
+      const res = await fetch(
+        'https://dnazztgpzfpcezsadyaz.functions.supabase.co/synthesize-review',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment1: leadComment, comment2: mgrComment })
+        }
+      );
       const data = await res.json();
-      synthesized = data.content?.[0]?.text?.trim() || comments.join(' / ');
+      synthesized = data.synthesized || comments.join(' / ');
     } catch {
       synthesized = comments.join(' / ');
     }
