@@ -389,8 +389,15 @@
 
     <div class="consult-list" id="accountList"></div>
 
-    <p class="week-label" style="margin-top:2rem;">이번 주 담당자별 민원 이관 건수를 입력하세요. (상담 건수 대비 비율로 환산되어 주간요약/비교 화면에 표시됩니다)</p>
-    <div class="account-form" id="escalationForm" style="grid-template-columns:1fr auto;"></div>
+    <p class="week-label" style="margin-top:2rem;">민원 이관 기록 · 날짜별로 담당자/건수를 등록하세요.</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr 80px 1fr auto; gap:8px; margin-bottom:12px;" id="escalationForm">
+      <input type="date" id="escDate" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); padding:0 10px;">
+      <select id="escAgent" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); background:var(--card); padding:0 10px;"></select>
+      <input type="number" id="escCount" min="1" value="1" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); padding:0 10px;">
+      <input type="text" id="escNote" placeholder="메모 (선택)" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); padding:0 10px;">
+      <button class="add-btn" onclick="addEscalationLog()">추가</button>
+    </div>
+    <div id="escalationLogList" class="consult-list"></div>
   </div>
 
 </div>
@@ -448,10 +455,11 @@ function mapConsultation(row){
 
 async function loadData(){
   // agents, summaries는 건수가 적으므로 한번에 로드
-  const [{ data: agents }, { data: teamAvg }, { data: summaries }] = await Promise.all([
+  const [{ data: agents }, { data: teamAvg }, { data: summaries }, { data: escalationLogs }] = await Promise.all([
     supabase.from('agents').select('*'),
     supabase.from('team_avg').select('*').eq('id', 1).maybeSingle(),
     supabase.from('agent_summaries').select('*'),
+    supabase.from('escalation_logs').select('*'),
   ]);
 
   // consultations는 건수가 많아 페이지네이션으로 전체 로드
@@ -521,6 +529,8 @@ async function loadData(){
 
   window.AI_SUMMARIES = {};
   (summaries || []).forEach(s => { window.AI_SUMMARIES[s.agent_id] = s.summary; });
+
+  window.ESCALATION_LOGS = escalationLogs || [];
 
   // 날짜 범위 동적 계산
   const dates = CONSULTATIONS.map(c => new Date(c.id.slice(0,0) || c.sub?.match(/\d{4}\.\d+\.\d+/)?.[0]));
@@ -629,8 +639,20 @@ function renderSummary(){
     if (c.recontact) g.recontact++;
   });
 
+  // 날짜 필터 기간에 맞는 민원 이관 로그 집계
+  const escByAgent = {};
+  (window.ESCALATION_LOGS || []).forEach(log => {
+    const d = new Date(log.logged_date);
+    if (dateFilterFrom && d < dateFilterFrom) return;
+    if (dateFilterTo && d > dateFilterTo) return;
+    if (!escByAgent[log.agent_id]) escByAgent[log.agent_id] = 0;
+    escByAgent[log.agent_id] += log.count;
+  });
+  const totalEsc = Object.values(escByAgent).reduce((s,v) => s+v, 0);
+
   const filteredAgents = AGENTS.map(a => {
     const g = byAgent[a.id];
+    const escCount = escByAgent[a.id] || 0;
     return {
       ...a,
       meta: `상담 ${g ? g.count : 0}건`,
@@ -638,6 +660,8 @@ function renderSummary(){
       effort: g ? g.effort/g.count : 0,
       resolution: g ? Math.round((g.resolved/g.count)*100) : 0,
       recontact: g ? Math.round((g.recontact/g.count)*100) : 0,
+      escalation: g && g.count ? Math.round((escCount/g.count)*100) : 0,
+      escalationCount: escCount,
     };
   });
   const totals = Object.values(byAgent).reduce((acc,g) => {
@@ -649,7 +673,7 @@ function renderSummary(){
     effort: totals.effort/totals.count,
     resolution: Math.round((totals.resolved/totals.count)*100),
     recontact: Math.round((totals.recontact/totals.count)*100),
-    escalation: TEAM_AVG.escalation,
+    escalation: totals.count ? Math.round((totalEsc/totals.count)*100) : 0,
   } : TEAM_AVG;
 
   const grid = document.getElementById('summaryGrid');
@@ -896,29 +920,76 @@ async function deleteAccount(email){
 }
 
 function renderEscalationForm(){
-  const form = document.getElementById('escalationForm');
-  form.innerHTML = AGENTS.map(a => `
-    <label style="display:flex; align-items:center; font-size:13px; font-weight:600; height:36px;">${a.name}</label>
-    <input type="number" min="0" step="1" id="esc-${a.id}" value="${a.escalationCount ?? 0}" style="width:100%;">
-  `).join('') + `<button class="add-btn" style="grid-column:1 / -1;" onclick="saveEscalation()">민원 건수 저장</button>`;
+  // 담당자 선택 옵션 채우기
+  const sel = document.getElementById('escAgent');
+  sel.innerHTML = AGENTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  // 오늘 날짜 기본값
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('escDate').value = today;
+  // 기록 목록 로드
+  loadEscalationLogs();
 }
 
-async function saveEscalation(){
-  const updates = AGENTS.map(a => ({
-    id: a.id,
-    escalation_count: Number(document.getElementById(`esc-${a.id}`).value || 0)
-  }));
+async function loadEscalationLogs(){
+  const { data: logs } = await supabase
+    .from('escalation_logs')
+    .select('*')
+    .order('logged_date', { ascending: false })
+    .limit(50);
 
-  for (const u of updates){
-    const { error } = await supabase.from('agents').update({ escalation_count: u.escalation_count }).eq('id', u.id);
-    if (error){ alert(`저장 실패 (${u.id}): ${error.message}`); return; }
+  const container = document.getElementById('escalationLogList');
+  if (!logs || !logs.length){
+    container.innerHTML = `<div class="account-row"><p class="meta" style="margin:0;">등록된 민원 이관 기록이 없습니다.</p></div>`;
+    return;
   }
+  container.innerHTML = logs.map(log => {
+    const agent = AGENTS.find(a => a.id === log.agent_id);
+    return `
+    <div class="account-row">
+      <div>
+        <p class="email">${log.logged_date} · ${agent?.name || log.agent_id} · ${log.count}건</p>
+        <p class="meta">${log.note || '-'}</p>
+      </div>
+      <div class="right">
+        <button class="del-btn" onclick="deleteEscalationLog(${log.id})">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  alert('민원 이관 건수가 저장되었습니다.');
+async function addEscalationLog(){
+  const date = document.getElementById('escDate').value;
+  const agentId = document.getElementById('escAgent').value;
+  const count = Number(document.getElementById('escCount').value || 1);
+  const note = document.getElementById('escNote').value.trim() || null;
+
+  if (!date) { alert('날짜를 선택해주세요.'); return; }
+  if (!agentId) { alert('담당자를 선택해주세요.'); return; }
+
+  const { error } = await supabase.from('escalation_logs').upsert({
+    agent_id: agentId,
+    logged_date: date,
+    count,
+    note,
+  }, { onConflict: 'agent_id,logged_date' });
+
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  document.getElementById('escCount').value = 1;
+  document.getElementById('escNote').value = '';
+  await loadEscalationLogs();
   await loadData();
   renderSummary();
   renderCompare(currentAgent);
-  renderEscalationForm();
+}
+
+async function deleteEscalationLog(id){
+  if (!confirm('이 민원 이관 기록을 삭제할까요?')) return;
+  const { error } = await supabase.from('escalation_logs').delete().eq('id', id);
+  if (error) { alert('삭제 실패: ' + error.message); return; }
+  await loadEscalationLogs();
+  await loadData();
+  renderSummary();
+  renderCompare(currentAgent);
 }
 
 function toggleAutoPass(){
@@ -1150,6 +1221,8 @@ window.completeReview = completeReview;
 window.onAccRoleChange = onAccRoleChange;
 window.addAccount = addAccount;
 window.deleteAccount = deleteAccount;
+window.addEscalationLog = addEscalationLog;
+window.deleteEscalationLog = deleteEscalationLog;
 window.saveEscalation = saveEscalation;
 
 /* ---------------- 로그인/권한 확인 ---------------- */
