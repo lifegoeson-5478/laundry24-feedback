@@ -539,6 +539,14 @@ function getFilteredConsultations(){
   });
 }
 
+function todayKST(offsetDays = 0){
+  // KST(UTC+9) 기준 오늘 날짜로 Date 반환
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  kst.setUTCDate(kst.getUTCDate() + offsetDays);
+  return kst;
+}
+
 function applyDatePreset(){
   const val = document.getElementById('datePreset').value;
   const customDiv = document.getElementById('customDateRange');
@@ -547,14 +555,17 @@ function applyDatePreset(){
     return;
   }
   customDiv.style.display = 'none';
-  const now = new Date();
-  dateFilterTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const today = todayKST();
+  today.setUTCHours(14, 59, 59, 0); // KST 23:59:59 = UTC 14:59:59
+  dateFilterTo = today;
   if (val === 'all'){
     dateFilterFrom = null;
     dateFilterTo = null;
   } else {
     const days = Number(val);
-    dateFilterFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + 1);
+    const from = todayKST(-(days - 1));
+    from.setUTCHours(15, 0, 0, 0); // KST 00:00:00 = UTC 15:00:00 (전날)
+    dateFilterFrom = from;
   }
   refreshViews();
 }
