@@ -447,12 +447,29 @@ function mapConsultation(row){
 }
 
 async function loadData(){
-  const [{ data: agents }, { data: teamAvg }, { data: summaries }, { data: consultations }] = await Promise.all([
+  // agents, summaries는 건수가 적으므로 한번에 로드
+  const [{ data: agents }, { data: teamAvg }, { data: summaries }] = await Promise.all([
     supabase.from('agents').select('*'),
     supabase.from('team_avg').select('*').eq('id', 1).maybeSingle(),
     supabase.from('agent_summaries').select('*'),
-    supabase.from('consultations').select('*').order('consulted_at').limit(5000),
   ]);
+
+  // consultations는 건수가 많아 페이지네이션으로 전체 로드
+  let allConsultations = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data: page, error } = await supabase
+      .from('consultations')
+      .select('*')
+      .order('consulted_at')
+      .range(from, from + pageSize - 1);
+    if (error || !page || !page.length) break;
+    allConsultations = allConsultations.concat(page);
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+  const consultations = allConsultations;
 
   window.CONSULTATIONS = (consultations || [])
     .filter(c => c.status !== 'skipped')
