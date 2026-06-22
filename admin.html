@@ -390,11 +390,11 @@
     <div class="consult-list" id="accountList"></div>
 
     <p class="week-label" style="margin-top:2rem;">민원 이관 기록 · 날짜별로 담당자/건수를 등록하세요.</p>
-    <div style="display:grid; grid-template-columns:1fr 1fr 80px 1fr auto; gap:8px; margin-bottom:12px;" id="escalationForm">
-      <input type="date" id="escDate" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); padding:0 10px;">
-      <select id="escAgent" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); background:var(--card); padding:0 10px;"></select>
-      <input type="number" id="escCount" min="1" value="1" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); padding:0 10px;">
-      <input type="text" id="escNote" placeholder="메모 (선택)" style="font-family:inherit; font-size:13px; height:36px; border-radius:8px; border:1px solid var(--line); padding:0 10px;">
+    <div class="account-form" id="escalationForm" style="grid-template-columns:1fr 1fr 80px 1fr auto;">
+      <input type="date" id="escDate">
+      <select id="escAgent"></select>
+      <input type="number" id="escCount" min="1" value="1">
+      <input type="text" id="escNote" placeholder="메모 (선택)">
       <button class="add-btn" onclick="addEscalationLog()">추가</button>
     </div>
     <div id="escalationLogList" class="consult-list"></div>
