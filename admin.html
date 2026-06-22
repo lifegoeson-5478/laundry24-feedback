@@ -302,7 +302,25 @@
 
   <!-- ===== VIEW 1: 주간 요약 ===== -->
   <div class="view active" id="view-summary">
-    <p class="week-label">2026.06.08 ~ 06.14 · 4명 · 팀 평균 대비 표시</p>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <p class="week-label" style="margin:0; flex:1;"></p>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+        <select id="datePreset" onchange="applyDatePreset()" style="font-family:inherit; font-size:13px; height:34px; border-radius:8px; border:1px solid var(--line); background:var(--card); padding:0 10px; cursor:pointer;">
+          <option value="7">최근 7일</option>
+          <option value="14">최근 14일</option>
+          <option value="30">최근 30일</option>
+          <option value="90">최근 90일</option>
+          <option value="all">전체</option>
+          <option value="custom">직접 설정</option>
+        </select>
+        <div id="customDateRange" style="display:none; align-items:center; gap:6px;">
+          <input type="date" id="dateFrom" style="font-family:inherit; font-size:13px; height:34px; border-radius:8px; border:1px solid var(--line); padding:0 8px;">
+          <span style="color:var(--ink-soft); font-size:13px;">~</span>
+          <input type="date" id="dateTo" style="font-family:inherit; font-size:13px; height:34px; border-radius:8px; border:1px solid var(--line); padding:0 8px;">
+          <button onclick="applyCustomDate()" style="font-family:inherit; font-size:13px; font-weight:600; height:34px; padding:0 14px; border-radius:8px; border:none; background:var(--ink); color:#fff; cursor:pointer;">적용</button>
+        </div>
+      </div>
+    </div>
     <div class="agent-grid" id="summaryGrid"></div>
   </div>
 
@@ -312,7 +330,7 @@
     <div class="compare-head">
       <div>
         <p class="name" id="cmpName">박서준</p>
-        <p class="meta" id="cmpMeta">2026.06.08 ~ 06.14 · 검토 완료 11건</p>
+        <p class="meta" id="cmpMeta"></p>
       </div>
     </div>
     <div class="legend">
@@ -332,7 +350,7 @@
   <!-- ===== VIEW 3: 상담 목록 ===== -->
   <div class="view" id="view-list">
     <button class="back-link" onclick="showView('summary')">&larr; 주간 요약으로</button>
-    <p class="week-label" id="listWeekLabel">2026.06.08 ~ 06.14 · 담당자 전체</p>
+    <p class="week-label" id="listWeekLabel"></p>
 
     <div class="filter-stats" id="filterStats"></div>
 
@@ -401,6 +419,7 @@ function mapConsultation(row){
     agentId: row.agent_id,
     title: row.title,
     sub: row.sub,
+    consultedAt: row.consulted_at,
     status: row.status,
     statusLabel: row.status_label,
     overall: Number(row.overall),
@@ -432,7 +451,7 @@ async function loadData(){
     supabase.from('agents').select('*'),
     supabase.from('team_avg').select('*').eq('id', 1).maybeSingle(),
     supabase.from('agent_summaries').select('*'),
-    supabase.from('consultations').select('*').order('id'),
+    supabase.from('consultations').select('*').order('consulted_at').limit(5000),
   ]);
 
   window.CONSULTATIONS = (consultations || [])
@@ -485,6 +504,18 @@ async function loadData(){
 
   window.AI_SUMMARIES = {};
   (summaries || []).forEach(s => { window.AI_SUMMARIES[s.agent_id] = s.summary; });
+
+  // 날짜 범위 동적 계산
+  const dates = CONSULTATIONS.map(c => new Date(c.id.slice(0,0) || c.sub?.match(/\d{4}\.\d+\.\d+/)?.[0]));
+  const allDates = (consultations || []).filter(c => c.consulted_at && c.status !== 'skipped').map(c => new Date(c.consulted_at));
+  if (allDates.length) {
+    const minDate = new Date(Math.min(...allDates));
+    const maxDate = new Date(Math.max(...allDates));
+    const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    window.DATE_RANGE = `${fmt(minDate)} ~ ${fmt(maxDate)}`;
+  } else {
+    window.DATE_RANGE = '날짜 없음';
+  }
 }
 
 function needsReview(c){
@@ -495,6 +526,55 @@ function needsReview(c){
 window.needsReview = needsReview;
 
 let currentAgent = 'seojun';
+let dateFilterFrom = null;
+let dateFilterTo = null;
+
+function getFilteredConsultations(){
+  return CONSULTATIONS.filter(c => {
+    if (!c.consultedAt) return true;
+    const d = new Date(c.consultedAt);
+    if (dateFilterFrom && d < dateFilterFrom) return false;
+    if (dateFilterTo && d > dateFilterTo) return false;
+    return true;
+  });
+}
+
+function applyDatePreset(){
+  const val = document.getElementById('datePreset').value;
+  const customDiv = document.getElementById('customDateRange');
+  if (val === 'custom'){
+    customDiv.style.display = 'flex';
+    return;
+  }
+  customDiv.style.display = 'none';
+  const now = new Date();
+  dateFilterTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  if (val === 'all'){
+    dateFilterFrom = null;
+    dateFilterTo = null;
+  } else {
+    const days = Number(val);
+    dateFilterFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + 1);
+  }
+  refreshViews();
+}
+window.applyDatePreset = applyDatePreset;
+
+function applyCustomDate(){
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  if (!from || !to) { alert('시작일과 종료일을 모두 선택해주세요.'); return; }
+  dateFilterFrom = new Date(from);
+  dateFilterTo = new Date(to + 'T23:59:59');
+  refreshViews();
+}
+window.applyCustomDate = applyCustomDate;
+
+function refreshViews(){
+  renderSummary();
+  renderCompare(currentAgent);
+  renderList();
+}
 
 /* ---------------- 렌더링 ---------------- */
 function flagBadge(value, teamValue, higherIsBetter, suffix){
@@ -507,22 +587,65 @@ function flagBadge(value, teamValue, higherIsBetter, suffix){
 }
 
 function renderSummary(){
-  const grid = document.getElementById('summaryGrid');
+  const fc = getFilteredConsultations();
 
-  if (!AGENTS.length){
+  // 날짜 범위 레이블
+  const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  const allDates2 = fc.filter(c => c.consultedAt).map(c => new Date(c.consultedAt));
+  const rangeLabel = allDates2.length
+    ? `${fmt(new Date(Math.min(...allDates2)))} ~ ${fmt(new Date(Math.max(...allDates2)))}`
+    : '-';
+  document.querySelector('#view-summary .week-label').textContent = `${rangeLabel} · 4명 · 팀 평균 대비 표시`;
+
+  // 필터된 데이터로 집계
+  const byAgent = {};
+  fc.forEach(c => {
+    if (!c.agentId) return;
+    if (!byAgent[c.agentId]) byAgent[c.agentId] = { count:0, tone:0, effort:0, resolved:0, recontact:0 };
+    const g = byAgent[c.agentId];
+    g.count++; g.tone += c.ai.tone; g.effort += c.ai.effort;
+    if (c.ai.resolution === '해결됨') g.resolved++;
+    if (c.recontact) g.recontact++;
+  });
+
+  const filteredAgents = AGENTS.map(a => {
+    const g = byAgent[a.id];
+    return {
+      ...a,
+      meta: `상담 ${g ? g.count : 0}건`,
+      tone: g ? g.tone/g.count : 0,
+      effort: g ? g.effort/g.count : 0,
+      resolution: g ? Math.round((g.resolved/g.count)*100) : 0,
+      recontact: g ? Math.round((g.recontact/g.count)*100) : 0,
+    };
+  });
+  const totals = Object.values(byAgent).reduce((acc,g) => {
+    acc.count+=g.count; acc.tone+=g.tone; acc.effort+=g.effort; acc.resolved+=g.resolved; acc.recontact+=g.recontact;
+    return acc;
+  }, {count:0,tone:0,effort:0,resolved:0,recontact:0});
+  const filteredTeamAvg = totals.count ? {
+    tone: totals.tone/totals.count,
+    effort: totals.effort/totals.count,
+    resolution: Math.round((totals.resolved/totals.count)*100),
+    recontact: Math.round((totals.recontact/totals.count)*100),
+    escalation: TEAM_AVG.escalation,
+  } : TEAM_AVG;
+
+  const grid = document.getElementById('summaryGrid');
+  if (!filteredAgents.length){
     grid.innerHTML = `<div class="agent-card" style="cursor:default; grid-column:1 / -1;">
-      <p class="agent-meta" style="margin:0;">아직 등록된 담당자 데이터가 없습니다. agents / team_avg 테이블에 데이터가 채워지면 표시됩니다.</p>
+      <p class="agent-meta" style="margin:0;">아직 등록된 담당자 데이터가 없습니다.</p>
     </div>`;
     return;
   }
 
-  grid.innerHTML = AGENTS.map(a => {
+  grid.innerHTML = filteredAgents.map(a => {
     const issues = [];
-    if (a.tone < TEAM_AVG.tone - 0.3) issues.push('톤/매너');
-    if (a.effort < TEAM_AVG.effort - 0.3) issues.push('처리 노력도');
-    if (a.resolution < TEAM_AVG.resolution - 5) issues.push('문제해결율');
-    if (a.recontact > TEAM_AVG.recontact + 3) issues.push('재접수율');
-    if (a.escalation > TEAM_AVG.escalation + 3) issues.push('민원 이관율');
+    if (a.tone < filteredTeamAvg.tone - 0.3) issues.push('톤/매너');
+    if (a.effort < filteredTeamAvg.effort - 0.3) issues.push('처리 노력도');
+    if (a.resolution < filteredTeamAvg.resolution - 5) issues.push('문제해결율');
+    if (a.recontact > filteredTeamAvg.recontact + 3) issues.push('재접수율');
+    if (a.escalation > filteredTeamAvg.escalation + 3) issues.push('민원 이관율');
     const flag = issues.length
       ? `<span class="flag warn">주의 · ${issues.length}개 지표</span>`
       : `<span class="flag ok">양호</span>`;
@@ -536,26 +659,11 @@ function renderSummary(){
         ${flag}
       </div>
       <div class="metric-row">
-        <div class="metric">
-          <p class="label">톤/매너</p>
-          <p class="value ${flagBadge(a.tone, TEAM_AVG.tone, true)}">${Math.round(a.tone)}</p>
-        </div>
-        <div class="metric">
-          <p class="label">처리 노력도</p>
-          <p class="value ${flagBadge(a.effort, TEAM_AVG.effort, true)}">${Math.round(a.effort)}</p>
-        </div>
-        <div class="metric">
-          <p class="label">문제해결율</p>
-          <p class="value ${flagBadge(a.resolution, TEAM_AVG.resolution, true)}">${a.resolution}%</p>
-        </div>
-        <div class="metric">
-          <p class="label">재접수율</p>
-          <p class="value ${flagBadge(a.recontact, TEAM_AVG.recontact, false)}">${a.recontact}%</p>
-        </div>
-        <div class="metric">
-          <p class="label">민원 이관율</p>
-          <p class="value ${flagBadge(a.escalation, TEAM_AVG.escalation, false)}">${a.escalation}%</p>
-        </div>
+        <div class="metric"><p class="label">톤/매너</p><p class="value ${flagBadge(a.tone, filteredTeamAvg.tone, true)}">${Math.round(a.tone)}</p></div>
+        <div class="metric"><p class="label">처리 노력도</p><p class="value ${flagBadge(a.effort, filteredTeamAvg.effort, true)}">${Math.round(a.effort)}</p></div>
+        <div class="metric"><p class="label">문제해결율</p><p class="value ${flagBadge(a.resolution, filteredTeamAvg.resolution, true)}">${a.resolution}%</p></div>
+        <div class="metric"><p class="label">재접수율</p><p class="value ${flagBadge(a.recontact, filteredTeamAvg.recontact, false)}">${a.recontact}%</p></div>
+        <div class="metric"><p class="label">민원 이관율</p><p class="value ${flagBadge(a.escalation, filteredTeamAvg.escalation, false)}">${a.escalation}%</p></div>
       </div>
     </div>`;
   }).join('');
@@ -597,7 +705,7 @@ function renderCompare(agentId){
     return;
   }
   document.getElementById('cmpName').textContent = a.name;
-  document.getElementById('cmpMeta').textContent = `2026.06.08 ~ 06.14 · ${a.meta}`;
+  document.getElementById('cmpMeta').textContent = `${DATE_RANGE} · ${a.meta}`;
   document.getElementById('cmpBars').innerHTML =
     bar('톤/매너', a.tone, TEAM_AVG.tone, 100, '') +
     bar('처리 노력도', a.effort, TEAM_AVG.effort, 100, '') +
@@ -651,9 +759,10 @@ function clearListFilter(){
 window.clearListFilter = clearListFilter;
 
 function renderList(){
+  const fc = getFilteredConsultations();
   const filtered = listFilterAgent
-    ? CONSULTATIONS.filter(c => c.agentId === listFilterAgent)
-    : CONSULTATIONS;
+    ? fc.filter(c => c.agentId === listFilterAgent)
+    : fc;
 
   const reviewItems = filtered.filter(needsReview);
   const autoItems = filtered.filter(c => !needsReview(c));
@@ -661,10 +770,10 @@ function renderList(){
   const label = document.getElementById('listWeekLabel');
   if (listFilterAgent){
     const a = AGENTS.find(x => x.id === listFilterAgent);
-    label.innerHTML = `2026.06.08 ~ 06.14 · ${a ? a.name : listFilterAgent}님의 상담 ` +
+    label.innerHTML = `${DATE_RANGE} · ${a ? a.name : listFilterAgent}님의 상담 ` +
       `<button class="back-link" style="display:inline; margin:0 0 0 8px;" onclick="clearListFilter()">전체 보기 ✕</button>`;
   } else {
-    label.textContent = '2026.06.08 ~ 06.14 · 담당자 전체';
+    label.textContent = DATE_RANGE + " · 담당자 전체";
   }
 
   document.getElementById('filterStats').innerHTML = `
