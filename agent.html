@@ -137,11 +137,19 @@ async function renderAgentView(agentId){
     .from('consultations')
     .select('*')
     .eq('agent_id', agentId)
-    .order('id');
+    .order('consulted_at')
+    .limit(2000);
+
+  const allDates = (items || []).filter(c => c.consulted_at && c.status !== 'skipped').map(c => new Date(c.consulted_at));
+  let dateRange = '';
+  if (allDates.length) {
+    const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    dateRange = `${fmt(new Date(Math.min(...allDates)))} ~ ${fmt(new Date(Math.max(...allDates)))}`;
+  }
 
   if (agent) {
     document.getElementById('weekLabel').textContent =
-      `2026.06.08 ~ 06.14 · ${agent.name}님의 상담건에 대해 AI 피드백 및 관리자 검토를 종합한 내용입니다`;
+      `${dateRange} · ${agent.name}님의 상담건에 대해 AI 피드백 및 관리자 검토를 종합한 내용입니다`;
   }
 
   const container = document.getElementById('agentCards');
