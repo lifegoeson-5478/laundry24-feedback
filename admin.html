@@ -389,6 +389,14 @@
 
     <div class="consult-list" id="accountList"></div>
 
+    <p class="week-label" style="margin-top:2rem;">담당자 관리 · 담당자를 추가하거나 삭제할 수 있습니다.</p>
+    <div class="account-form" style="grid-template-columns:1fr 1fr auto;">
+      <input type="text" id="agentName" placeholder="이름 (예: 홍길동)">
+      <input type="text" id="agentChanneltalkId" placeholder="채널톡 ID (예: 639261)">
+      <button class="add-btn" onclick="addAgent()">추가</button>
+    </div>
+    <div class="consult-list" id="agentList"></div>
+
     <p class="week-label" style="margin-top:2rem;">민원 이관 기록 · 날짜별로 담당자/건수를 등록하세요.</p>
     <div class="account-form" id="escalationForm" style="grid-template-columns:1fr 1fr 80px 1fr auto;">
       <input type="date" id="escDate">
@@ -862,10 +870,61 @@ function onAccRoleChange(){
   document.getElementById('accAgent').style.display = isAgent ? '' : 'none';
 }
 
+async function renderAgentList(){
+  const { data: agents } = await supabase.from('agents').select('*').order('name');
+  const container = document.getElementById('agentList');
+  if (!agents || !agents.length){
+    container.innerHTML = `<div class="account-row"><p class="meta" style="margin:0;">등록된 담당자가 없습니다.</p></div>`;
+    return;
+  }
+  container.innerHTML = agents.map(a => `
+    <div class="account-row">
+      <div>
+        <p class="email">${a.name}</p>
+        <p class="meta">채널톡 ID: ${a.channeltalk_id || '-'}</p>
+      </div>
+      <div class="right">
+        <button class="del-btn" onclick="deleteAgent('${a.id}')">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addAgent(){
+  const name = document.getElementById('agentName').value.trim();
+  const channeltalkId = document.getElementById('agentChanneltalkId').value.trim();
+  if (!name) { alert('이름을 입력해주세요.'); return; }
+
+  // ID는 이름을 영문으로 변환하거나 타임스탬프 사용
+  const id = 'agent_' + Date.now();
+  const { error } = await supabase.from('agents').insert({
+    id, name, channeltalk_id: channeltalkId || null,
+    tone: 0, effort: 0, resolution: 0, recontact: 0, escalation: 0
+  });
+  if (error) { alert('추가 실패: ' + error.message); return; }
+
+  document.getElementById('agentName').value = '';
+  document.getElementById('agentChanneltalkId').value = '';
+  await renderAgentList();
+  await loadData();
+  renderSummary();
+  fillAgentSelect();
+}
+
+async function deleteAgent(agentId){
+  if (!confirm('이 담당자를 삭제할까요?\n삭제 시 해당 담당자의 상담 기록은 유지되지만 담당자 정보가 분리됩니다.')) return;
+  const { error } = await supabase.from('agents').delete().eq('id', agentId);
+  if (error) { alert('삭제 실패: ' + error.message); return; }
+  await renderAgentList();
+  await loadData();
+  renderSummary();
+  fillAgentSelect();
+}
+
 async function renderAccounts(){
   fillAgentSelect();
   onAccRoleChange();
   renderEscalationForm();
+  renderAgentList();
 
   const { data, error } = await supabase.from('account_roles').select('*').order('role').order('email');
   if (error){
@@ -1219,6 +1278,8 @@ window.cancelRecontact = cancelRecontact;
 window.confirmRecontact = confirmRecontact;
 window.saveDraft = saveDraft;
 window.completeReview = completeReview;
+window.addAgent = addAgent;
+window.deleteAgent = deleteAgent;
 window.onAccRoleChange = onAccRoleChange;
 window.fillAgentSelect = fillAgentSelect;
 window.addAccount = addAccount;
