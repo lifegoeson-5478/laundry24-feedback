@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LAUNDRY24 주간 피드백 · 담당자</title>
+<title>상담 품질 리뷰</title>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <style>
   :root{
@@ -12,8 +12,13 @@
     --ink:#1A1D29;
     --ink-soft:#8B92A5;
     --line:#EEF0F3;
+    --navy:#14B8A6;
+    --coral:#EF4444;
+    --coral-soft:#FEECEC;
     --teal:#14B8A6;
     --teal-soft:#E7FAF7;
+    --amber:#F59E0B;
+    --amber-soft:#FEF6E7;
   }
   *{box-sizing:border-box;}
   body{
@@ -23,7 +28,7 @@
     color:var(--ink);
     line-height:1.6;
   }
-  .app{max-width:640px; margin:0 auto; padding:28px 24px 80px;}
+  .app{max-width:920px; margin:0 auto; padding:28px 24px 80px;}
   header.topbar{
     display:flex; justify-content:space-between; align-items:flex-end;
     margin-bottom:24px; padding-bottom:18px; border-bottom:1px solid var(--line);
@@ -33,41 +38,257 @@
     color:var(--ink-soft); text-transform:uppercase; margin:0 0 6px; font-weight:600;
   }
   header.topbar h1{
-    font-weight:700; font-size:24px; margin:0; letter-spacing:-.01em;
+    font-weight:700; font-size:26px; margin:0; letter-spacing:-.01em;
   }
-  .logout-btn{
+  nav.tabs{display:flex; gap:6px;}
+  nav.tabs button{
     font-family:inherit; font-size:13px; font-weight:600;
     padding:9px 16px; border:1px solid var(--line); border-radius:999px;
     background:var(--card); color:var(--ink-soft); cursor:pointer;
+    transition:all .15s ease;
   }
-  .logout-btn:hover{ border-color:var(--teal); color:var(--teal); }
+  nav.tabs button.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  nav.tabs button:hover:not(.active){ border-color:var(--teal); color:var(--teal); }
+
+  .view{display:none;}
+  .view.active{display:block;}
 
   .week-label{font-size:13px; color:var(--ink-soft); margin:0 0 18px;}
 
-  .consult-list{display:flex; flex-direction:column; gap:8px;}
-
-  .agent-feedback-card{
+  /* 주간 요약 카드 */
+  .agent-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .agent-card{
     background:var(--card); border:1px solid var(--line); border-radius:14px;
-    padding:16px 18px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+    padding:18px 18px 16px; cursor:pointer; transition:border-color .15s ease, transform .1s ease, box-shadow .15s ease;
+    position:relative; box-shadow:0 1px 2px rgba(16,24,40,.04);
   }
-  .agent-feedback-card .fhead{
-    display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;
+  .agent-card:hover{border-color:var(--teal); transform:translateY(-1px); box-shadow:0 4px 12px rgba(16,24,40,.06);}
+  .agent-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;}
+  .agent-name{font-size:16px; font-weight:700; margin:0 0 2px;}
+  .agent-meta{font-size:12px; color:var(--ink-soft); margin:0;}
+  .flag{
+    font-size:11px; padding:4px 10px;
+    border-radius:999px; font-weight:600; white-space:nowrap;
   }
-  .agent-feedback-card .ctitle{font-size:14px; font-weight:700; margin:0 0 2px;}
-  .agent-feedback-card .csub{font-size:12px; color:var(--ink-soft); margin:0;}
-  .agent-feedback-card .avgscore{
-    font-size:13px; font-weight:700; color:var(--teal); background:var(--teal-soft);
-    border-radius:999px; padding:4px 12px; white-space:nowrap;
+  .flag.warn{ background:var(--coral-soft); color:var(--coral); }
+  .flag.ok{ background:var(--teal-soft); color:var(--teal); }
+  .metric-row{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
+  .metric{
+    background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;
   }
-  .feedback-note{
-    background:var(--paper); border-radius:10px; padding:12px 14px;
+  .metric .label{font-size:10px; color:var(--ink-soft); margin:0 0 4px;}
+  .metric .value{font-size:16px; font-weight:700; margin:0;}
+  .metric .value.bad{color:var(--coral);}
+  .metric .value.good{color:var(--teal);}
+
+  /* 비교 대시보드 */
+  .back-link{
+    display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--ink-soft);
+    cursor:pointer; margin-bottom:14px; border:none; background:none; padding:0; font-family:inherit; font-weight:600;
   }
-  .feedback-note .ftag{
-    font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 6px;
-    display:flex; align-items:center; gap:6px;
+  .back-link:hover{color:var(--teal);}
+  .compare-head{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;
   }
-  .feedback-note p{font-size:13px; margin:0; color:var(--ink);}
-  .feedback-note.empty p{color:var(--ink-soft);}
+  .compare-head .name{font-size:22px; font-weight:700; margin:0; letter-spacing:-.01em;}
+  .compare-head .meta{font-size:12px; color:var(--ink-soft); margin:2px 0 0;}
+  .legend{display:flex; gap:18px; font-size:12px; color:var(--ink-soft); margin-bottom:10px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
+  .sw.me{background:var(--teal);}
+  .sw.team{background:#D7DBE2;}
+
+  .bar-block{margin-bottom:28px;}
+  .bar-block .bname{font-size:13px; font-weight:600; margin:0 0 6px;}
+  .bar-track-wrap{position:relative;}
+  .team-marker{
+    position:absolute; bottom:100%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center;
+    font-size:11px; font-weight:700; color:var(--ink); white-space:nowrap;
+  }
+  .team-marker .arrow{
+    width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent;
+    border-top:5px solid var(--ink); margin-top:2px;
+  }
+  .bar-track{
+    background:var(--paper); border-radius:6px; height:14px; position:relative; overflow:hidden; margin-bottom:4px;
+  }
+  .bar-fill{height:100%; border-radius:6px; position:absolute; top:0; left:0;}
+  .bar-fill.me{background:var(--teal);}
+  .bar-fill.team{background:#D7DBE2; opacity:.9;}
+  .bar-fill.team-line{
+    position:absolute; top:0; bottom:0; width:2px; background:var(--ink-soft);
+  }
+  .bar-vals{display:flex; justify-content:space-between; font-size:11px; color:var(--ink-soft);}
+
+  .ai-summary{
+    background:var(--teal-soft); border-radius:12px; border-left:3px solid var(--teal);
+    padding:14px 16px; margin-top:18px;
+  }
+  .ai-summary .tag{
+    display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700;
+    color:var(--teal); margin:0 0 8px;
+  }
+  .ai-summary p{font-size:13px; margin:0; color:var(--ink);}
+
+  /* 상담 리스트 */
+  .consult-list{display:flex; flex-direction:column; gap:8px; margin-top:14px;}
+  .consult-row{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:13px 16px; display:flex; justify-content:space-between; align-items:center;
+    cursor:pointer; transition:border-color .15s ease, box-shadow .15s ease;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .consult-row:hover{border-color:var(--teal); box-shadow:0 4px 12px rgba(16,24,40,.06);}
+  .consult-row .ctitle{font-size:14px; font-weight:700; margin:0 0 2px;}
+  .consult-row .csub{font-size:12px; color:var(--ink-soft); margin:0;}
+  .status{
+    font-size:11px; padding:5px 11px; border-radius:999px; font-weight:600;
+  }
+  .status.pending{background:var(--amber-soft); color:var(--amber);}
+  .status.flagged{background:var(--coral-soft); color:var(--coral);}
+  .status.done{background:var(--teal-soft); color:var(--teal);}
+
+  .filter-stats{
+    display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;
+  }
+  .filter-stats .stat{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:10px 16px; flex:1; min-width:120px;
+  }
+  .filter-stats .stat .n{font-size:18px; font-weight:700; margin:0;}
+  .filter-stats .stat .l{font-size:12px; color:var(--ink-soft); margin:2px 0 0;}
+  .filter-stats .stat.review .n{color:var(--coral);}
+  .filter-stats .stat.auto .n{color:var(--teal);}
+
+  .section-label{
+    font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase;
+    letter-spacing:.06em; margin:0 0 8px;
+  }
+
+  .consult-row .score{
+    font-size:12px; font-weight:700; color:var(--ink-soft); margin-right:12px; white-space:nowrap;
+  }
+  .consult-row .score.low{color:var(--coral);}
+  .consult-row .right{display:flex; align-items:center;}
+
+  .collapse-toggle{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:6px;
+    font-family:inherit; font-size:12px; font-weight:600; color:var(--ink-soft);
+    background:var(--card); border:1px dashed var(--line); border-radius:12px;
+    padding:10px; margin:18px 0 0; cursor:pointer;
+  }
+  .collapse-toggle:hover{ border-color:var(--teal); color:var(--teal); }
+  .collapse-toggle i{ transition:transform .15s ease; }
+  .collapse-toggle.open i{ transform:rotate(180deg); }
+
+  /* 계정 관리 */
+  .account-form{
+    display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr auto; gap:8px; margin-bottom:18px;
+  }
+  .account-form input, .account-form select{
+    font-family:inherit; font-size:13px; height:36px; border-radius:8px;
+    border:1px solid var(--line); background:var(--card); padding:0 10px;
+  }
+  .account-form .add-btn{
+    font-family:inherit; font-size:13px; font-weight:600; height:36px; padding:0 16px;
+    border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:#fff; cursor:pointer;
+  }
+  .account-row{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 16px; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .account-row .email{font-size:14px; font-weight:600; margin:0 0 2px;}
+  .account-row .meta{font-size:12px; color:var(--ink-soft); margin:0;}
+  .account-row .right{display:flex; align-items:center; gap:10px;}
+  .role-pill{
+    font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;
+  }
+  .role-pill.admin{ background:var(--ink); color:#fff; }
+  .role-pill.agent{ background:var(--teal-soft); color:var(--teal); }
+  .account-row .del-btn{
+    font-family:inherit; font-size:12px; font-weight:600; color:var(--coral);
+    background:var(--coral-soft); border:none; border-radius:999px; padding:6px 12px; cursor:pointer;
+  }
+  .sub-tab{
+    font-family:inherit; font-size:13px; font-weight:600;
+    padding:7px 16px; border:1px solid var(--line); border-radius:999px;
+    background:var(--card); color:var(--ink-soft); cursor:pointer;
+    transition:all .15s ease;
+  }
+  .sub-tab.active{ background:var(--teal-soft); color:var(--teal); border-color:var(--teal); }
+  .sub-tab:hover:not(.active){ border-color:var(--teal); color:var(--teal); }
+
+  @media (max-width:640px){
+    .account-form{grid-template-columns:1fr 1fr;}
+    .account-form .add-btn{grid-column:1 / -1;}
+  }
+
+  /* 상담 카드 상세 */
+  .detail-card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .detail-head{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:14px;
+  }
+  .detail-head .ctitle{font-size:16px; font-weight:700; margin:0 0 3px;}
+  .detail-head .csub{font-size:12px; color:var(--ink-soft); margin:0;}
+
+  .recontact-box{
+    background:var(--coral-soft); border-radius:12px; border-left:3px solid var(--coral);
+    padding:13px 15px; margin-bottom:14px;
+  }
+  .recontact-box .tag{
+    display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:var(--coral); margin:0 0 6px;
+  }
+  .recontact-box p{font-size:13px; margin:0 0 8px; color:#B91C1C;}
+  .recontact-box button{
+    font-size:12px; padding:6px 12px; border-radius:999px; border:1px solid var(--coral);
+    background:transparent; color:var(--coral); cursor:pointer; font-weight:600; font-family:inherit;
+  }
+
+  .ai-box{
+    background:var(--paper); border-radius:12px; padding:14px 15px; margin-bottom:14px;
+  }
+  .ai-box .tag{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--teal); margin:0 0 10px;}
+  .ai-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 18px; font-size:13px; margin-bottom:10px;}
+  .ai-grid div{display:flex; justify-content:space-between;}
+  .ai-grid .k{color:var(--ink-soft);}
+  .ai-grid .v{font-weight:700;}
+  .ai-grid .v.flagv{color:var(--coral);}
+  .ai-box .note{font-size:13px; margin:0; padding-top:10px; border-top:1px solid var(--line);}
+
+  .review-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .review-box{border:1px solid var(--line); border-radius:12px; padding:13px 14px;}
+  .review-box .rhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .review-box .rhead p{font-size:13px; font-weight:700; margin:0;}
+  .review-box select{
+    font-family:inherit; font-size:12px; font-weight:600; height:30px; border-radius:999px;
+    border:1px solid var(--line); background:var(--paper); padding:0 10px;
+  }
+  .review-box textarea{
+    width:100%; font-size:13px; font-family:inherit; resize:vertical;
+    padding:9px; border-radius:8px; border:1px solid var(--line); background:var(--paper);
+  }
+
+  .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:14px;}
+  .actions button{
+    font-size:13px; font-weight:600; padding:10px 16px; border-radius:999px; border:1px solid var(--line);
+    background:#fff; cursor:pointer; font-family:inherit;
+  }
+  .actions button.primary{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  @media (max-width:640px){
+    .agent-grid{grid-template-columns:1fr;}
+    .metric-row{grid-template-columns:repeat(2,1fr);}
+    .metric:last-child{grid-column:1 / -1;}
+    .review-grid{grid-template-columns:1fr;}
+    .ai-grid{grid-template-columns:1fr;}
+    header.topbar{flex-direction:column; align-items:flex-start; gap:14px;}
+  }
 </style>
 </head>
 <body>
@@ -78,25 +299,1056 @@
       <p class="eyebrow">상담 품질 리뷰</p>
       <h1>LAUNDRY24 주간 피드백</h1>
     </div>
-    <div style="display:flex; gap:8px;">
-      <button class="logout-btn" id="adminBackBtn" style="display:none;" onclick="location.href='admin.html'">어드민으로</button>
-      <button class="logout-btn" onclick="logout()">로그아웃</button>
-    </div>
+    <nav class="tabs">
+      <button class="active" data-view="summary" onclick="showView('summary')">주간 요약</button>
+      <button data-view="compare" onclick="showView('compare')">담당자 비교</button>
+      <button data-view="list" onclick="listFilterAgent=null; showView('list')">상담 목록</button>
+      <button data-view="accounts" onclick="showView('accounts')">계정 관리</button>
+      <button onclick="logout()">로그아웃</button>
+    </nav>
   </header>
 
-  <p class="week-label" id="weekLabel">2026.06.08 ~ 06.14 · 팀장/매니저 검토를 종합한 내용입니다</p>
-  <div class="consult-list" id="agentCards"></div>
+  <!-- ===== VIEW 1: 주간 요약 ===== -->
+  <div class="view active" id="view-summary">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <p class="week-label" style="margin:0; flex:1;"></p>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+        <select id="datePreset" onchange="applyDatePreset()" style="font-family:inherit; font-size:13px; height:34px; border-radius:8px; border:1px solid var(--line); background:var(--card); padding:0 10px; cursor:pointer;">
+          <option value="7">최근 7일</option>
+          <option value="14">최근 14일</option>
+          <option value="30">최근 30일</option>
+          <option value="90">최근 90일</option>
+          <option value="all">전체</option>
+          <option value="custom">직접 설정</option>
+        </select>
+        <div id="customDateRange" style="display:none; align-items:center; gap:6px;">
+          <input type="date" id="dateFrom" style="font-family:inherit; font-size:13px; height:34px; border-radius:8px; border:1px solid var(--line); padding:0 8px;">
+          <span style="color:var(--ink-soft); font-size:13px;">~</span>
+          <input type="date" id="dateTo" style="font-family:inherit; font-size:13px; height:34px; border-radius:8px; border:1px solid var(--line); padding:0 8px;">
+          <button onclick="applyCustomDate()" style="font-family:inherit; font-size:13px; font-weight:600; height:34px; padding:0 14px; border-radius:8px; border:none; background:var(--ink); color:#fff; cursor:pointer;">적용</button>
+        </div>
+      </div>
+    </div>
+    <div class="agent-grid" id="summaryGrid"></div>
+  </div>
+
+  <!-- ===== VIEW 2: 담당자 비교 ===== -->
+  <div class="view" id="view-compare">
+    <button class="back-link" onclick="showView('summary')">&larr; 주간 요약으로</button>
+    <div class="compare-head">
+      <div>
+        <p class="name" id="cmpName">박서준</p>
+        <p class="meta" id="cmpMeta"></p>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="sw me"></span>해당 담당자</span>
+      <span><span class="sw team"></span>팀 평균</span>
+    </div>
+    <div id="cmpBars"></div>
+    <div class="ai-summary">
+      <p class="tag">AI 요약</p>
+      <p id="cmpSummary"></p>
+    </div>
+    <div class="actions">
+      <button id="viewAgentConsultsBtn">이 담당자의 상담 보기 &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ===== VIEW 3: 상담 목록 ===== -->
+  <div class="view" id="view-list">
+    <button class="back-link" onclick="showView('summary')">&larr; 주간 요약으로</button>
+    <p class="week-label" id="listWeekLabel"></p>
+
+    <div class="filter-stats" id="filterStats"></div>
+
+    <p class="section-label">검토 대상</p>
+    <div class="consult-list" id="reviewList"></div>
+
+    <button class="collapse-toggle" id="autoToggle" onclick="toggleAutoPass()">
+      <span id="autoToggleLabel">AI 자동 통과 0건 보기</span>
+      <i class="ti ti-chevron-down" aria-hidden="true"></i>
+    </button>
+    <div class="consult-list" id="autoList" style="display:none;"></div>
+  </div>
+
+  <!-- ===== VIEW 4: 상담 상세 ===== -->
+  <div class="view" id="view-detail">
+    <button class="back-link" onclick="showView('list')">&larr; 상담 목록으로</button>
+    <div class="detail-card" id="detailCard"></div>
+  </div>
+
+  <!-- ===== VIEW 5: 계정 관리 ===== -->
+  <div class="view" id="view-accounts">
+    <div style="display:flex; gap:6px; margin-bottom:18px;">
+      <button class="sub-tab active" data-sub="accounts" onclick="showSubTab('accounts')">계정</button>
+      <button class="sub-tab" data-sub="agents" onclick="showSubTab('agents')">담당자</button>
+      <button class="sub-tab" data-sub="escalation" onclick="showSubTab('escalation')">민원 이관</button>
+    </div>
+
+    <!-- 서브탭 1: 계정 -->
+    <div id="sub-accounts" class="sub-view">
+      <p class="week-label">구글 로그인 이메일별로 역할(어드민/담당자)과 매칭되는 담당자를 설정합니다.</p>
+      <div class="account-form">
+        <input type="email" id="accEmail" placeholder="이메일 (예: name@laundry24.com)">
+        <select id="accRole" onchange="onAccRoleChange()">
+          <option value="agent">담당자</option>
+          <option value="admin">어드민</option>
+        </select>
+        <select id="accAgent">
+          <option value="">담당자 선택</option>
+        </select>
+        <input type="text" id="accName" placeholder="표시 이름 (예: 박서준)">
+        <button class="add-btn" onclick="addAccount()">추가</button>
+      </div>
+      <div class="consult-list" id="accountList"></div>
+    </div>
+
+    <!-- 서브탭 2: 담당자 -->
+    <div id="sub-agents" class="sub-view" style="display:none;">
+      <p class="week-label">담당자를 추가하거나 삭제할 수 있습니다. 채널톡 ID는 fetch-channeltalk?resource=managers 에서 확인하세요.</p>
+      <div class="account-form" style="grid-template-columns:1fr 1fr auto;">
+        <input type="text" id="agentName" placeholder="이름 (예: 홍길동)">
+        <input type="text" id="agentChanneltalkId" placeholder="채널톡 ID (예: 639261)">
+        <button class="add-btn" onclick="addAgent()">추가</button>
+      </div>
+      <div class="consult-list" id="agentList"></div>
+    </div>
+
+    <!-- 서브탭 3: 민원 이관 -->
+    <div id="sub-escalation" class="sub-view" style="display:none;">
+      <p class="week-label">날짜별로 담당자/건수를 등록하세요. 선택한 기간에 맞게 주간요약/비교 화면에 반영됩니다.</p>
+      <div class="account-form" id="escalationForm" style="grid-template-columns:1fr 1fr 80px 1fr auto;">
+        <input type="date" id="escDate">
+        <select id="escAgent"></select>
+        <input type="number" id="escCount" min="1" value="1">
+        <input type="text" id="escNote" placeholder="메모 (선택)">
+        <button class="add-btn" onclick="addEscalationLog()">추가</button>
+      </div>
+      <div id="escalationLogList" class="consult-list"></div>
+    </div>
+  </div>
 
 </div>
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-/* 아래 두 값을 본인 Supabase 프로젝트 정보로 교체하세요. */
+/* ---------------- Supabase 연결 ---------------- */
+/* 아래 두 값을 본인 Supabase 프로젝트 정보로 교체하세요.
+   Project Settings > API 에서 확인할 수 있습니다. */
 const SUPABASE_URL = 'https://dnazztgpzfpcezsadyaz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_cuPnQYSO5_hIoNvfLovPPw_VFUnx0u4';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ---------------- 전역 데이터 (Supabase에서 채워짐) ---------------- */
+window.TEAM_AVG = { tone: 0, effort: 0, resolution: 0, recontact: 0, escalation: 0 };
+window.AGENTS = [];
+window.AI_SUMMARIES = {};
+window.CONSULTATIONS = [];
+window.ESCALATION_LOGS = [];
+window.REVIEW_THRESHOLD = 50;
+
+function mapConsultation(row){
+  return {
+    id: row.id,
+    agentId: row.agent_id,
+    title: row.title,
+    sub: row.sub,
+    consultedAt: row.consulted_at,
+    customerName: row.customer_name,
+    status: row.status,
+    statusLabel: row.status_label,
+    overall: Number(row.overall),
+    recontact: row.recontact_ref ? {
+      ref: row.recontact_ref,
+      days: row.recontact_days,
+      similarity: row.recontact_similarity,
+      note: row.recontact_note
+    } : null,
+    ai: {
+      tone: Number(row.ai_tone),
+      effort: Number(row.ai_effort),
+      resolution: row.ai_resolution,
+      recontactFlag: row.ai_recontact_flag,
+      note: row.ai_note
+    },
+    review: {
+      leadScore: row.lead_score != null ? String(row.lead_score) : '',
+      leadComment: row.lead_comment || '',
+      mgrScore: row.mgr_score != null ? String(row.mgr_score) : '',
+      mgrComment: row.mgr_comment || ''
+    },
+    synthesized: row.synthesized || null
+  };
+}
+
+async function loadData(){
+  // agents, summaries는 건수가 적으므로 한번에 로드
+  const [{ data: agents }, { data: teamAvg }, { data: summaries }, { data: escalationLogs }] = await Promise.all([
+    supabase.from('agents').select('*'),
+    supabase.from('team_avg').select('*').eq('id', 1).maybeSingle(),
+    supabase.from('agent_summaries').select('*'),
+    supabase.from('escalation_logs').select('*'),
+  ]);
+
+  // consultations는 건수가 많아 페이지네이션으로 전체 로드
+  let allConsultations = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data: page, error } = await supabase
+      .from('consultations')
+      .select('*')
+      .order('consulted_at')
+      .range(from, from + pageSize - 1);
+    if (error || !page || !page.length) break;
+    allConsultations = allConsultations.concat(page);
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+  const consultations = allConsultations;
+
+  window.CONSULTATIONS = (consultations || [])
+    .filter(c => c.status !== 'skipped')
+    .map(mapConsultation);
+
+  // consultations 데이터를 바탕으로 담당자별 지표 실시간 집계
+  const byAgent = {};
+  CONSULTATIONS.forEach(c => {
+    if (!c.agentId) return;
+    if (!byAgent[c.agentId]) byAgent[c.agentId] = { count: 0, tone: 0, effort: 0, resolved: 0, recontact: 0 };
+    const g = byAgent[c.agentId];
+    g.count++;
+    g.tone += c.ai.tone;
+    g.effort += c.ai.effort;
+    if (c.ai.resolution === '해결됨') g.resolved++;
+    if (c.recontact) g.recontact++;
+  });
+
+  window.AGENTS = (agents || []).map(a => {
+    const g = byAgent[a.id];
+    return {
+      id: a.id, name: a.name,
+      meta: `상담 ${g ? g.count : 0}건`,
+      tone: g ? g.tone / g.count : 0,
+      effort: g ? g.effort / g.count : 0,
+      resolution: g ? Math.round((g.resolved / g.count) * 100) : 0,
+      recontact: g ? Math.round((g.recontact / g.count) * 100) : 0,
+      escalation: g && g.count ? Math.round((Number(a.escalation_count || 0) / g.count) * 100) : 0,
+      escalationCount: Number(a.escalation_count || 0)
+    };
+  });
+
+  // 팀 평균 = 등록된 상담 전체 기준 평균
+  const totals = Object.values(byAgent).reduce((acc, g) => {
+    acc.count += g.count; acc.tone += g.tone; acc.effort += g.effort;
+    acc.resolved += g.resolved; acc.recontact += g.recontact;
+    return acc;
+  }, { count: 0, tone: 0, effort: 0, resolved: 0, recontact: 0 });
+
+  const totalEscalation = (agents || []).reduce((sum, a) => sum + Number(a.escalation_count || 0), 0);
+
+  window.TEAM_AVG = totals.count ? {
+    tone: totals.tone / totals.count,
+    effort: totals.effort / totals.count,
+    resolution: Math.round((totals.resolved / totals.count) * 100),
+    recontact: Math.round((totals.recontact / totals.count) * 100),
+    escalation: Math.round((totalEscalation / totals.count) * 100)
+  } : { tone: 0, effort: 0, resolution: 0, recontact: 0, escalation: 0 };
+
+  window.AI_SUMMARIES = {};
+  (summaries || []).forEach(s => { window.AI_SUMMARIES[s.agent_id] = s.summary; });
+
+  window.ESCALATION_LOGS = escalationLogs || [];
+
+  // 날짜 범위 동적 계산
+  const dates = CONSULTATIONS.map(c => new Date(c.id.slice(0,0) || c.sub?.match(/\d{4}\.\d+\.\d+/)?.[0]));
+  const allDates = (consultations || []).filter(c => c.consulted_at && c.status !== 'skipped').map(c => new Date(c.consulted_at));
+  if (allDates.length) {
+    const minDate = new Date(Math.min(...allDates));
+    const maxDate = new Date(Math.max(...allDates));
+    const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    window.DATE_RANGE = `${fmt(minDate)} ~ ${fmt(maxDate)}`;
+  } else {
+    window.DATE_RANGE = '날짜 없음';
+  }
+}
+
+function needsReview(c){
+  if (c.overall < REVIEW_THRESHOLD) return true;
+  if (c.recontact) return true;
+  return false;
+}
+window.needsReview = needsReview;
+
+let currentAgent = 'seojun';
+let dateFilterFrom = null;
+let dateFilterTo = null;
+
+function getFilteredConsultations(){
+  return CONSULTATIONS.filter(c => {
+    if (!c.consultedAt) return true;
+    const d = new Date(c.consultedAt);
+    if (dateFilterFrom && d < dateFilterFrom) return false;
+    if (dateFilterTo && d > dateFilterTo) return false;
+    return true;
+  });
+}
+
+function applyDatePreset(){
+  const val = document.getElementById('datePreset').value;
+  const customDiv = document.getElementById('customDateRange');
+  if (val === 'custom'){
+    customDiv.style.display = 'flex';
+    return;
+  }
+  customDiv.style.display = 'none';
+  if (val === 'all'){
+    dateFilterFrom = null;
+    dateFilterTo = null;
+  } else {
+    const days = Number(val);
+    // 오늘 날짜 문자열(YYYY-MM-DD)로 비교 - 시간대 무관
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const fromDate = new Date(todayStr);
+    fromDate.setDate(fromDate.getDate() - days + 1);
+    dateFilterFrom = fromDate;
+    dateFilterTo = new Date(todayStr + 'T23:59:59.999Z');
+    dateFilterTo.setDate(dateFilterTo.getDate() + 1); // 내일 0시까지 포함
+  }
+  refreshViews();
+}
+window.applyDatePreset = applyDatePreset;
+
+function applyCustomDate(){
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  if (!from || !to) { alert('시작일과 종료일을 모두 선택해주세요.'); return; }
+  dateFilterFrom = new Date(from);
+  dateFilterTo = new Date(to + 'T23:59:59');
+  refreshViews();
+}
+window.applyCustomDate = applyCustomDate;
+
+function refreshViews(){
+  renderSummary();
+  renderCompare(currentAgent);
+  renderList();
+}
+
+/* ---------------- 렌더링 ---------------- */
+function flagBadge(value, teamValue, higherIsBetter, suffix){
+  const diff = value - teamValue;
+  const bad = higherIsBetter ? diff < -0.3 : diff > 1.5;
+  const good = higherIsBetter ? diff > 0.2 : diff < -1;
+  let cls = '';
+  if (bad) cls = 'bad'; else if (good) cls = 'good';
+  return cls;
+}
+
+function renderSummary(){
+  const fc = getFilteredConsultations();
+
+  // 날짜 범위 레이블
+  const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  const allDates2 = fc.filter(c => c.consultedAt).map(c => new Date(c.consultedAt));
+  const rangeLabel = allDates2.length
+    ? `${fmt(new Date(Math.min(...allDates2)))} ~ ${fmt(new Date(Math.max(...allDates2)))}`
+    : '-';
+  document.querySelector('#view-summary .week-label').textContent = `${rangeLabel} · 4명 · 팀 평균 대비 표시`;
+
+  // 필터된 데이터로 집계
+  const byAgent = {};
+  fc.forEach(c => {
+    if (!c.agentId) return;
+    if (!byAgent[c.agentId]) byAgent[c.agentId] = { count:0, tone:0, effort:0, resolved:0, recontact:0 };
+    const g = byAgent[c.agentId];
+    g.count++; g.tone += c.ai.tone; g.effort += c.ai.effort;
+    if (c.ai.resolution === '해결됨') g.resolved++;
+    if (c.recontact) g.recontact++;
+  });
+
+  // 날짜 필터 기간에 맞는 민원 이관 로그 집계
+  const escByAgent = {};
+  (window.ESCALATION_LOGS || []).forEach(log => {
+    const d = new Date(log.logged_date);
+    if (dateFilterFrom && d < dateFilterFrom) return;
+    if (dateFilterTo && d > dateFilterTo) return;
+    if (!escByAgent[log.agent_id]) escByAgent[log.agent_id] = 0;
+    escByAgent[log.agent_id] += log.count;
+  });
+  const totalEsc = Object.values(escByAgent).reduce((s,v) => s+v, 0);
+
+  const filteredAgents = AGENTS.map(a => {
+    const g = byAgent[a.id];
+    const escCount = escByAgent[a.id] || 0;
+    return {
+      ...a,
+      meta: `상담 ${g ? g.count : 0}건`,
+      tone: g ? g.tone/g.count : 0,
+      effort: g ? g.effort/g.count : 0,
+      resolution: g ? Math.round((g.resolved/g.count)*100) : 0,
+      recontact: g ? Math.round((g.recontact/g.count)*100) : 0,
+      escalation: g && g.count ? Math.round((escCount/g.count)*100) : 0,
+      escalationCount: escCount,
+    };
+  });
+  const totals = Object.values(byAgent).reduce((acc,g) => {
+    acc.count+=g.count; acc.tone+=g.tone; acc.effort+=g.effort; acc.resolved+=g.resolved; acc.recontact+=g.recontact;
+    return acc;
+  }, {count:0,tone:0,effort:0,resolved:0,recontact:0});
+  const filteredTeamAvg = totals.count ? {
+    tone: totals.tone/totals.count,
+    effort: totals.effort/totals.count,
+    resolution: Math.round((totals.resolved/totals.count)*100),
+    recontact: Math.round((totals.recontact/totals.count)*100),
+    escalation: totals.count ? Math.round((totalEsc/totals.count)*100) : 0,
+  } : TEAM_AVG;
+
+  const grid = document.getElementById('summaryGrid');
+  if (!filteredAgents.length){
+    grid.innerHTML = `<div class="agent-card" style="cursor:default; grid-column:1 / -1;">
+      <p class="agent-meta" style="margin:0;">아직 등록된 담당자 데이터가 없습니다.</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filteredAgents.map(a => {
+    const issues = [];
+    if (a.tone < filteredTeamAvg.tone - 0.3) issues.push('톤/매너');
+    if (a.effort < filteredTeamAvg.effort - 0.3) issues.push('처리 노력도');
+    if (a.resolution < filteredTeamAvg.resolution - 5) issues.push('문제해결율');
+    if (a.recontact > filteredTeamAvg.recontact + 3) issues.push('재접수율');
+    if (a.escalation > filteredTeamAvg.escalation + 3) issues.push('민원 이관율');
+    const flag = issues.length
+      ? `<span class="flag warn">주의 · ${issues.length}개 지표</span>`
+      : `<span class="flag ok">양호</span>`;
+    return `
+    <div class="agent-card" onclick="openCompare('${a.id}')">
+      <div class="agent-head">
+        <div>
+          <p class="agent-name">${a.name}</p>
+          <p class="agent-meta">${a.meta}</p>
+        </div>
+        ${flag}
+      </div>
+      <div class="metric-row">
+        <div class="metric"><p class="label">톤/매너</p><p class="value ${flagBadge(a.tone, filteredTeamAvg.tone, true)}">${Math.round(a.tone)}</p></div>
+        <div class="metric"><p class="label">처리 노력도</p><p class="value ${flagBadge(a.effort, filteredTeamAvg.effort, true)}">${Math.round(a.effort)}</p></div>
+        <div class="metric"><p class="label">문제해결율</p><p class="value ${flagBadge(a.resolution, filteredTeamAvg.resolution, true)}">${a.resolution}%</p></div>
+        <div class="metric"><p class="label">재접수율</p><p class="value ${flagBadge(a.recontact, filteredTeamAvg.recontact, false)}">${a.recontact}%</p></div>
+        <div class="metric"><p class="label">민원 이관율</p><p class="value ${flagBadge(a.escalation, filteredTeamAvg.escalation, false)}">${a.escalation}%</p></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function bar(label, value, teamValue, max, unit){
+  const clamp = v => Math.max(0, Math.min(max, v));
+  const v = clamp(value), tv = clamp(teamValue);
+  const pct = (v/max)*100;
+  const teamPct = (tv/max)*100;
+  const markerHtml = tv > 0 ? `
+      <div class="team-marker" style="left:${teamPct}%">
+        팀 평균
+        <span class="arrow"></span>
+      </div>` : '';
+  return `
+  <div class="bar-block">
+    <p class="bname">${label}</p>
+    <div class="bar-track-wrap">
+      ${markerHtml}
+      <div class="bar-track">
+        <div class="bar-fill me" style="width:${pct}%"></div>
+      </div>
+    </div>
+    <div class="bar-vals">
+      <span>${Math.round(v)}${unit}</span>
+      <span>팀 평균 ${Math.round(tv)}${unit}</span>
+    </div>
+  </div>`;
+}
+
+function renderCompare(agentId){
+  const a = AGENTS.find(x => x.id === agentId);
+  if (!a){
+    document.getElementById('cmpName').textContent = '담당자 데이터 없음';
+    document.getElementById('cmpMeta').textContent = '';
+    document.getElementById('cmpBars').innerHTML = '';
+    document.getElementById('cmpSummary').textContent = '담당자/팀 평균 데이터가 등록되면 비교가 표시됩니다.';
+    return;
+  }
+  document.getElementById('cmpName').textContent = a.name;
+  document.getElementById('cmpMeta').textContent = `${DATE_RANGE} · ${a.meta}`;
+  document.getElementById('cmpBars').innerHTML =
+    bar('톤/매너', a.tone, TEAM_AVG.tone, 100, '') +
+    bar('처리 노력도', a.effort, TEAM_AVG.effort, 100, '') +
+    bar('문제해결율', a.resolution, TEAM_AVG.resolution, 100, '%') +
+    bar('재접수율', a.recontact, TEAM_AVG.recontact, 20, '%') +
+    bar('민원 이관율', a.escalation, TEAM_AVG.escalation, 20, '%');
+  document.getElementById('cmpSummary').textContent = AI_SUMMARIES[agentId] || '아직 AI 요약이 없습니다.';
+  document.getElementById('viewAgentConsultsBtn').onclick = () => showAgentConsultations(agentId);
+}
+
+function consultRow(c){
+  const review = needsReview(c);
+  let cls, label;
+  if (c.status === 'done') {
+    cls = 'done'; label = c.statusLabel;
+  } else if (!review) {
+    cls = 'done'; label = 'AI 자동 통과';
+  } else if (c.recontact) {
+    cls = 'flagged'; label = '재접수 발생';
+  } else {
+    cls = 'pending'; label = '검토 대기';
+  }
+  const scoreCls = c.overall < REVIEW_THRESHOLD ? 'low' : '';
+  return `
+    <div class="consult-row" onclick="openDetail('${c.id}')">
+      <div>
+        <p class="ctitle">${c.title} <a href="https://desk.channel.io/laundry24/user-chats/${c.customerName ? encodeURIComponent(c.customerName) + '-' + c.id : c.id}" target="_blank" onclick="event.stopPropagation()" style="font-size:11px; color:var(--teal); font-weight:600; text-decoration:none; margin-left:6px;">↗</a></p>
+        <p class="csub">${c.sub}</p>
+      </div>
+      <div class="right">
+        <span class="score ${scoreCls}">AI ${Math.round(c.overall)}</span>
+        <span class="status ${cls}">${label}</span>
+      </div>
+    </div>`;
+}
+
+let autoOpen = false;
+
+let listFilterAgent = null;
+
+function showAgentConsultations(agentId){
+  listFilterAgent = agentId;
+  showView('list');
+}
+window.showAgentConsultations = showAgentConsultations;
+
+function clearListFilter(){
+  listFilterAgent = null;
+  renderList();
+}
+window.clearListFilter = clearListFilter;
+
+function renderList(){
+  const fc = getFilteredConsultations();
+  const filtered = listFilterAgent
+    ? fc.filter(c => c.agentId === listFilterAgent)
+    : fc;
+
+  const reviewItems = filtered.filter(needsReview);
+  const autoItems = filtered.filter(c => !needsReview(c));
+
+  const label = document.getElementById('listWeekLabel');
+  if (listFilterAgent){
+    const a = AGENTS.find(x => x.id === listFilterAgent);
+    label.innerHTML = `${DATE_RANGE} · ${a ? a.name : listFilterAgent}님의 상담 ` +
+      `<button class="back-link" style="display:inline; margin:0 0 0 8px;" onclick="clearListFilter()">전체 보기 ✕</button>`;
+  } else {
+    label.textContent = DATE_RANGE + " · 담당자 전체";
+  }
+
+  document.getElementById('filterStats').innerHTML = `
+    <div class="stat">
+      <p class="n">${filtered.length}건</p>
+      <p class="l">전체 처리</p>
+    </div>
+    <div class="stat review">
+      <p class="n">${reviewItems.length}건</p>
+      <p class="l">검토 대상 (종합 ${REVIEW_THRESHOLD} 미만 · 재접수 · 미해결)</p>
+    </div>
+    <div class="stat auto">
+      <p class="n">${autoItems.length}건</p>
+      <p class="l">AI 자동 통과</p>
+    </div>
+  `;
+
+  const reviewList = document.getElementById('reviewList');
+  reviewList.innerHTML = reviewItems.length
+    ? reviewItems.map(consultRow).join('')
+    : `<div class="consult-row" style="cursor:default;"><p class="csub" style="margin:0;">이번 주 검토 대상 상담이 없습니다.</p></div>`;
+
+  document.getElementById('autoList').innerHTML = autoItems.map(consultRow).join('');
+  document.getElementById('autoToggleLabel').textContent = autoOpen
+    ? 'AI 자동 통과 숨기기'
+    : `AI 자동 통과 ${autoItems.length}건 보기`;
+}
+
+/* ---------------- 계정 관리 ---------------- */
+let ACCOUNTS = [];
+
+function fillAgentSelect(){
+  const sel = document.getElementById('accAgent');
+  sel.innerHTML = '<option value="">담당자 선택</option>' +
+    AGENTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+}
+
+function onAccRoleChange(){
+  const isAgent = document.getElementById('accRole').value === 'agent';
+  document.getElementById('accAgent').style.display = isAgent ? '' : 'none';
+}
+
+async function renderAgentList(){
+  const { data: agents } = await supabase.from('agents').select('*').order('name');
+  const container = document.getElementById('agentList');
+  if (!agents || !agents.length){
+    container.innerHTML = `<div class="account-row"><p class="meta" style="margin:0;">등록된 담당자가 없습니다.</p></div>`;
+    return;
+  }
+  container.innerHTML = agents.map(a => `
+    <div class="account-row">
+      <div>
+        <p class="email">${a.name}</p>
+        <p class="meta">채널톡 ID: ${a.channeltalk_id || '-'}</p>
+      </div>
+      <div class="right">
+        <button class="del-btn" onclick="deleteAgent('${a.id}')">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addAgent(){
+  const name = document.getElementById('agentName').value.trim();
+  const channeltalkId = document.getElementById('agentChanneltalkId').value.trim();
+  if (!name) { alert('이름을 입력해주세요.'); return; }
+
+  // ID는 이름을 영문으로 변환하거나 타임스탬프 사용
+  const id = 'agent_' + Date.now();
+  const { error } = await supabase.from('agents').insert({
+    id, name, channeltalk_id: channeltalkId || null,
+    tone: 0, effort: 0, resolution: 0, recontact: 0, escalation: 0
+  });
+  if (error) { alert('추가 실패: ' + error.message); return; }
+
+  document.getElementById('agentName').value = '';
+  document.getElementById('agentChanneltalkId').value = '';
+  await renderAgentList();
+  await loadData();
+  renderSummary();
+  fillAgentSelect();
+}
+
+async function deleteAgent(agentId){
+  if (!confirm('이 담당자를 삭제할까요?\n삭제 시 해당 담당자의 상담 기록은 유지되지만 담당자 정보가 분리됩니다.')) return;
+  const { error } = await supabase.from('agents').delete().eq('id', agentId);
+  if (error) { alert('삭제 실패: ' + error.message); return; }
+  await renderAgentList();
+  await loadData();
+  renderSummary();
+  fillAgentSelect();
+}
+
+async function renderAccounts(){
+  fillAgentSelect();
+  onAccRoleChange();
+  renderEscalationForm();
+  renderAgentList();
+
+  const { data, error } = await supabase.from('account_roles').select('*').order('role').order('email');
+  if (error){
+    document.getElementById('accountList').innerHTML =
+      `<div class="account-row"><p class="meta" style="margin:0;">계정 목록을 불러오지 못했습니다: ${error.message}</p></div>`;
+    return;
+  }
+  ACCOUNTS = data || [];
+
+  document.getElementById('accountList').innerHTML = ACCOUNTS.map(acc => {
+    const agentName = AGENTS.find(a => a.id === acc.agent_id)?.name;
+    const metaParts = [];
+    if (acc.display_name) metaParts.push(acc.display_name);
+    if (acc.role === 'agent' && agentName) metaParts.push(`담당자: ${agentName}`);
+    return `
+    <div class="account-row">
+      <div>
+        <p class="email">${acc.email}</p>
+        <p class="meta">${metaParts.join(' · ') || '-'}</p>
+      </div>
+      <div class="right">
+        <span class="role-pill ${acc.role}">${acc.role === 'admin' ? '어드민' : '담당자'}</span>
+        <button class="del-btn" onclick="deleteAccount('${acc.email}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('') || `<div class="account-row"><p class="meta" style="margin:0;">등록된 계정이 없습니다.</p></div>`;
+}
+
+async function addAccount(){
+  const email = document.getElementById('accEmail').value.trim();
+  const role = document.getElementById('accRole').value;
+  const agentId = document.getElementById('accAgent').value || null;
+  const displayName = document.getElementById('accName').value.trim() || null;
+
+  if (!email){ alert('이메일을 입력해주세요.'); return; }
+  if (role === 'agent' && !agentId){ alert('매칭할 담당자를 선택해주세요.'); return; }
+
+  const { error } = await supabase.from('account_roles').upsert({
+    email, role, agent_id: role === 'agent' ? agentId : null, display_name: displayName
+  });
+  if (error){ alert('저장에 실패했습니다: ' + error.message); return; }
+
+  document.getElementById('accEmail').value = '';
+  document.getElementById('accName').value = '';
+  renderAccounts();
+}
+
+async function deleteAccount(email){
+  if (!confirm(`${email} 계정을 삭제할까요?`)) return;
+  const { error } = await supabase.from('account_roles').delete().eq('email', email);
+  if (error){ alert('삭제에 실패했습니다: ' + error.message); return; }
+  renderAccounts();
+}
+
+function renderEscalationForm(){
+  // 담당자 선택 옵션 채우기
+  const sel = document.getElementById('escAgent');
+  sel.innerHTML = AGENTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  // 오늘 날짜 기본값
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('escDate').value = today;
+  // 기록 목록 로드
+  loadEscalationLogs();
+}
+
+async function loadEscalationLogs(){
+  const { data: logs } = await supabase
+    .from('escalation_logs')
+    .select('*')
+    .order('logged_date', { ascending: false })
+    .limit(50);
+
+  const container = document.getElementById('escalationLogList');
+  if (!logs || !logs.length){
+    container.innerHTML = `<div class="account-row"><p class="meta" style="margin:0;">등록된 민원 이관 기록이 없습니다.</p></div>`;
+    return;
+  }
+  container.innerHTML = logs.map(log => {
+    const agent = AGENTS.find(a => a.id === log.agent_id);
+    return `
+    <div class="account-row">
+      <div>
+        <p class="email">${log.logged_date} · ${agent?.name || log.agent_id} · ${log.count}건</p>
+        <p class="meta">${log.note || '-'}</p>
+      </div>
+      <div class="right">
+        <button class="del-btn" onclick="deleteEscalationLog(${log.id})">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addEscalationLog(){
+  const date = document.getElementById('escDate').value;
+  const agentId = document.getElementById('escAgent').value;
+  const count = Number(document.getElementById('escCount').value || 1);
+  const note = document.getElementById('escNote').value.trim() || null;
+
+  if (!date) { alert('날짜를 선택해주세요.'); return; }
+  if (!agentId) { alert('담당자를 선택해주세요.'); return; }
+
+  const { error } = await supabase.from('escalation_logs').upsert({
+    agent_id: agentId,
+    logged_date: date,
+    count,
+    note,
+  }, { onConflict: 'agent_id,logged_date' });
+
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  document.getElementById('escCount').value = 1;
+  document.getElementById('escNote').value = '';
+  await loadEscalationLogs();
+  await loadData();
+  renderSummary();
+  renderCompare(currentAgent);
+}
+
+async function deleteEscalationLog(id){
+  if (!confirm('이 민원 이관 기록을 삭제할까요?')) return;
+  const { error } = await supabase.from('escalation_logs').delete().eq('id', id);
+  if (error) { alert('삭제 실패: ' + error.message); return; }
+  await loadEscalationLogs();
+  await loadData();
+  renderSummary();
+  renderCompare(currentAgent);
+}
+
+function toggleAutoPass(){
+  autoOpen = !autoOpen;
+  document.getElementById('autoList').style.display = autoOpen ? 'flex' : 'none';
+  document.getElementById('autoToggle').classList.toggle('open', autoOpen);
+  renderList();
+}
+
+function renderDetail(id){
+  const c = CONSULTATIONS.find(x => x.id === id);
+  const review = needsReview(c);
+  let detailCls, detailLabel;
+  if (c.status === 'done') {
+    detailCls = 'done'; detailLabel = c.statusLabel;
+  } else if (!review) {
+    detailCls = 'done'; detailLabel = 'AI 자동 통과';
+  } else if (c.recontact) {
+    detailCls = 'flagged'; detailLabel = '재접수 발생';
+  } else {
+    detailCls = 'pending'; detailLabel = '검토 대기';
+  }
+
+  const recontactHtml = c.recontact ? `
+    <div class="recontact-box">
+      <p class="tag">재접수 발생 · ${c.recontact.days}일 후 상담 #${c.recontact.ref}과 동일 문의 (유사도 ${c.recontact.similarity}%)</p>
+      <p>${c.recontact.note}</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button onclick="openDetail('${c.recontact.ref}')">재접수 상담 #${c.recontact.ref} 보기</button>
+        <button onclick="cancelRecontact('${c.id}')" style="border-color:var(--coral); color:var(--coral);">재접수 아님 (취소)</button>
+      </div>
+    </div>` : `
+    <div style="margin-bottom:14px;">
+      <button onclick="confirmRecontact('${c.id}')" style="font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; font-weight:600; font-family:inherit;">+ 재접수로 직접 표시</button>
+    </div>`;
+
+  document.getElementById('detailCard').innerHTML = `
+    <div class="detail-head">
+      <div>
+        <p class="ctitle">${c.title}</p>
+        <p class="csub">${c.sub}</p>
+        <a href="https://desk.channel.io/laundry24/user-chats/${c.customerName ? encodeURIComponent(c.customerName) + '-' + c.id : c.id}" target="_blank" style="font-size:12px; color:var(--teal); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:6px;">
+          채널톡에서 보기 →
+        </a>
+      </div>
+      <span class="status ${detailCls}">${detailLabel}</span>
+    </div>
+    ${recontactHtml}
+    <div class="ai-box">
+      <p class="tag">AI 1차 분석</p>
+      <div class="ai-grid">
+        <div><span class="k">상담 톤/매너</span><span class="v">${Math.round(c.ai.tone)} / 100</span></div>
+        <div><span class="k">처리 노력도</span><span class="v">${Math.round(c.ai.effort)} / 100</span></div>
+        <div><span class="k">문제해결 여부</span><span class="v ${c.ai.resolution.includes('재발') ? 'flagv' : ''}">${c.ai.resolution}</span></div>
+        <div><span class="k">재접수 여부</span><span class="v ${c.ai.recontactFlag.includes('발생') || c.ai.recontactFlag.includes('재접수') ? 'flagv' : ''}">${c.ai.recontactFlag}</span></div>
+      </div>
+      <p class="note">${c.ai.note}</p>
+    </div>
+    <div class="review-grid">
+      <div class="review-box">
+        <div class="rhead">
+          <p>팀장 검토</p>
+          <select id="leadScore">
+            ${['100','90','80','70','60','50','40'].map(v => `<option ${v===c.review.leadScore?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <textarea rows="3" placeholder="코멘트를 입력하세요" id="leadComment">${c.review.leadComment}</textarea>
+      </div>
+      <div class="review-box">
+        <div class="rhead">
+          <p>매니저 검토</p>
+          <select id="mgrScore">
+            ${['100','90','80','70','60','50','40'].map(v => `<option ${v===c.review.mgrScore?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <textarea rows="3" placeholder="코멘트를 입력하세요" id="mgrComment">${c.review.mgrComment}</textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button onclick="saveDraft('${c.id}')">초안으로 저장</button>
+      <button class="primary" onclick="completeReview('${c.id}')">검토 완료</button>
+    </div>
+  `;
+}
+
+/* ---------------- 화면 전환 ---------------- */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+  const tabBtn = document.querySelector(`nav.tabs button[data-view="${name}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+  if (name === 'accounts') renderAccounts();
+  if (name === 'list') renderList();
+}
+
+function openCompare(agentId){
+  currentAgent = agentId;
+  renderCompare(agentId);
+  showView('compare');
+}
+
+function openDetail(id){
+  renderDetail(id);
+  showView('detail');
+}
+
+async function saveDraft(id){
+  const c = CONSULTATIONS.find(x => x.id === id);
+  const leadScore = document.getElementById('leadScore').value;
+  const leadComment = document.getElementById('leadComment').value;
+  const mgrScore = document.getElementById('mgrScore').value;
+  const mgrComment = document.getElementById('mgrComment').value;
+
+  const { error } = await supabase.from('consultations').update({
+    lead_score: leadScore ? Number(leadScore) : null,
+    lead_comment: leadComment || null,
+    mgr_score: mgrScore ? Number(mgrScore) : null,
+    mgr_comment: mgrComment || null,
+  }).eq('id', id);
+
+  if (error) { alert('저장 실패: ' + error.message); return; }
+
+  c.review.leadScore = leadScore;
+  c.review.leadComment = leadComment;
+  c.review.mgrScore = mgrScore;
+  c.review.mgrComment = mgrComment;
+  alert('초안으로 저장되었습니다.');
+}
+
+async function completeReview(id){
+  const c = CONSULTATIONS.find(x => x.id === id);
+  const leadScore = document.getElementById('leadScore').value;
+  const leadComment = document.getElementById('leadComment').value;
+  const mgrScore = document.getElementById('mgrScore').value;
+  const mgrComment = document.getElementById('mgrComment').value;
+
+  // AI로 두 코멘트를 합성 (누가 썼는지 드러나지 않게)
+  let synthesized = null;
+  const comments = [leadComment, mgrComment].filter(Boolean);
+  if (comments.length === 1) {
+    synthesized = comments[0];
+  } else if (comments.length === 2) {
+    try {
+      const res = await fetch(
+        'https://dnazztgpzfpcezsadyaz.functions.supabase.co/synthesize-review',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment1: leadComment, comment2: mgrComment })
+        }
+      );
+      const data = await res.json();
+      synthesized = data.synthesized || comments.join(' / ');
+    } catch {
+      synthesized = comments.join(' / ');
+    }
+  }
+
+  const scores = [leadScore, mgrScore].filter(Boolean).map(Number);
+  const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+  if (synthesized && avgScore) synthesized = `[종합 ${avgScore}점] ${synthesized}`;
+
+  const { error } = await supabase.from('consultations').update({
+    lead_score: leadScore ? Number(leadScore) : null,
+    lead_comment: leadComment || null,
+    mgr_score: mgrScore ? Number(mgrScore) : null,
+    mgr_comment: mgrComment || null,
+    status: 'done',
+    status_label: '검토 완료',
+    synthesized,
+  }).eq('id', id);
+
+  if (error) { alert('저장 실패: ' + error.message); return; }
+
+  c.review.leadScore = leadScore;
+  c.review.leadComment = leadComment;
+  c.review.mgrScore = mgrScore;
+  c.review.mgrComment = mgrComment;
+  c.status = 'done';
+  c.statusLabel = '검토 완료';
+  c.synthesized = synthesized;
+  alert('검토 완료로 저장되었습니다.');
+  showView('list');
+  renderList();
+}
+
+/* ---------------- 초기화 ---------------- */
+window.renderList = renderList;
+window.renderCompare = renderCompare;
+window.openCompare = openCompare;
+window.openDetail = openDetail;
+window.showView = showView;
+window.toggleAutoPass = toggleAutoPass;
+async function cancelRecontact(consultationId){
+  if (!confirm('이 상담의 재접수 표시를 취소할까요? (AI 자동 분류를 사람이 직접 수정합니다)')) return;
+  const { error } = await supabase.from('consultations').update({
+    recontact_ref: null,
+    recontact_days: null,
+    recontact_similarity: null,
+    recontact_note: null,
+    ai_recontact_flag: '없음',
+  }).eq('id', consultationId);
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  await loadData();
+  renderList();
+  openDetail(consultationId);
+}
+
+async function confirmRecontact(consultationId){
+  const refId = prompt('재접수 원본 상담 ID를 입력하세요 (상담 목록에서 확인 가능):');
+  if (!refId) return;
+  const refC = CONSULTATIONS.find(x => x.id === refId.trim());
+  if (!refC) { alert('해당 ID의 상담을 찾을 수 없습니다.'); return; }
+  const { error } = await supabase.from('consultations').update({
+    recontact_ref: consultationId,
+    recontact_days: 0,
+    recontact_similarity: 100,
+    recontact_note: '어드민이 수동으로 재접수 표시',
+    ai_recontact_flag: '재접수 발생',
+  }).eq('id', refId.trim());
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  await loadData();
+  renderList();
+  openDetail(consultationId);
+}
+
+window.cancelRecontact = cancelRecontact;
+window.confirmRecontact = confirmRecontact;
+window.saveDraft = saveDraft;
+window.completeReview = completeReview;
+function showSubTab(name){
+  ['accounts','agents','escalation'].forEach(t => {
+    document.getElementById('sub-' + t).style.display = t === name ? '' : 'none';
+    document.querySelector(`.sub-tab[data-sub="${t}"]`).classList.toggle('active', t === name);
+  });
+}
+window.showSubTab = showSubTab;
+window.addAgent = addAgent;
+window.deleteAgent = deleteAgent;
+window.onAccRoleChange = onAccRoleChange;
+window.fillAgentSelect = fillAgentSelect;
+window.addAccount = addAccount;
+window.deleteAccount = deleteAccount;
+window.addEscalationLog = addEscalationLog;
+window.deleteEscalationLog = deleteEscalationLog;
+
+/* ---------------- 로그인/권한 확인 ---------------- */
+async function requireAdmin(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session){
+    location.href = 'index.html';
+    return false;
+  }
+  const { data: account } = await supabase
+    .from('account_roles')
+    .select('*')
+    .eq('email', session.user.email)
+    .maybeSingle();
+
+  if (!account || account.role !== 'admin'){
+    alert('어드민 권한이 없는 계정입니다.');
+    await supabase.auth.signOut();
+    location.href = 'index.html';
+    return false;
+  }
+
+  if (account.agent_id){
+    const nav = document.querySelector('nav.tabs');
+    const btn = document.createElement('button');
+    btn.textContent = '내 피드백';
+    btn.onclick = () => location.href = 'agent.html';
+    nav.insertBefore(btn, nav.lastElementChild); // 로그아웃 버튼 앞에 추가
+  }
+
+  return true;
+}
 
 async function logout(){
   await supabase.auth.signOut();
@@ -104,129 +1356,24 @@ async function logout(){
 }
 window.logout = logout;
 
-async function init(){
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session){
-    location.href = 'index.html';
-    return;
-  }
+const app = document.querySelector('.app');
+app.style.opacity = '0.4';
 
-  const { data: account } = await supabase
-    .from('account_roles')
-    .select('*')
-    .eq('email', session.user.email)
-    .maybeSingle();
-
-  if (!account || !account.agent_id){
-    alert('담당자 계정으로 등록되어 있지 않습니다.');
-    await supabase.auth.signOut();
-    location.href = 'index.html';
-    return;
-  }
-
-  if (account.role === 'admin'){
-    document.getElementById('adminBackBtn').style.display = '';
-  }
-
-  await renderAgentView(account.agent_id);
-}
-
-async function renderAgentView(agentId){
-  const { data: agent } = await supabase.from('agents').select('*').eq('id', agentId).maybeSingle();
-  const { data: items } = await supabase
-    .from('consultations')
-    .select('*')
-    .eq('agent_id', agentId)
-    .order('consulted_at')
-    .limit(2000);
-
-  const allDates = (items || []).filter(c => c.consulted_at && c.status !== 'skipped').map(c => new Date(c.consulted_at));
-  let dateRange = '';
-  if (allDates.length) {
-    const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-    dateRange = `${fmt(new Date(Math.min(...allDates)))} ~ ${fmt(new Date(Math.max(...allDates)))}`;
-  }
-
-  if (agent) {
-    document.getElementById('weekLabel').textContent =
-      `${dateRange} · ${agent.name}님의 상담건에 대해 AI 피드백 및 관리자 검토를 종합한 내용입니다`;
-  }
-
-  const container = document.getElementById('agentCards');
-  const all = (items || []).filter(c => c.status !== 'skipped');
-  const reviewed = all.filter(c => c.lead_score != null || c.mgr_score != null);
-
-  // 주간 요약 카드 계산
-  const count = all.length;
-  const tone = count ? Math.round(all.reduce((s,c) => s + Number(c.ai_tone||0), 0) / count) : 0;
-  const effort = count ? Math.round(all.reduce((s,c) => s + Number(c.ai_effort||0), 0) / count) : 0;
-  const resolution = count ? Math.round((all.filter(c => c.ai_resolution === '해결됨').length / count) * 100) : 0;
-  const recontact = count ? Math.round((all.filter(c => c.recontact_ref).length / count) * 100) : 0;
-  const escalation = count && agent?.escalation_count
-    ? Math.round((Number(agent.escalation_count) / count) * 100) : 0;
-
-  const summaryCard = `
-  <div style="background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:18px; box-shadow:0 1px 2px rgba(16,24,40,.04);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <p style="font-size:16px; font-weight:700; margin:0;">${agent?.name || ''}님의 이번 주</p>
-      <span style="font-size:12px; color:var(--ink-soft);">상담 ${count}건</span>
-    </div>
-    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:8px;">
-      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
-        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">톤/매너</p>
-        <p style="font-size:16px; font-weight:700; margin:0; color:var(--teal);">${tone}</p>
-      </div>
-      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
-        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">처리 노력도</p>
-        <p style="font-size:16px; font-weight:700; margin:0; color:var(--teal);">${effort}</p>
-      </div>
-      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
-        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">문제해결율</p>
-        <p style="font-size:16px; font-weight:700; margin:0; color:var(--teal);">${resolution}%</p>
-      </div>
-      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
-        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">재접수율</p>
-        <p style="font-size:16px; font-weight:700; margin:0; ${recontact > 5 ? 'color:var(--coral)' : 'color:var(--ink)'};">${recontact}%</p>
-      </div>
-      <div style="background:var(--paper); border-radius:10px; padding:10px 4px; text-align:center;">
-        <p style="font-size:10px; color:var(--ink-soft); margin:0 0 4px;">민원 이관율</p>
-        <p style="font-size:16px; font-weight:700; margin:0; ${escalation > 5 ? 'color:var(--coral)' : 'color:var(--ink)'};">${escalation}%</p>
-      </div>
-    </div>
-  </div>`;
-
-  if (!reviewed.length){
-    container.innerHTML = summaryCard + `<div class="agent-feedback-card"><p class="csub" style="margin:0;">아직 등록된 피드백이 없습니다.</p></div>`;
-    return;
-  }
-
-  container.innerHTML = summaryCard + reviewed.map(c => {
-    const scores = [c.lead_score, c.mgr_score].filter(v => v != null).map(Number);
-    const avg = scores.length ? Math.round(scores.reduce((a,b) => a+b, 0) / scores.length) : '-';
-    const sub = (c.sub || '').split(' · ').slice(1).join(' · ');
-    const note = c.synthesized
-      ? `<div class="feedback-note"><p class="ftag"><i class="ti ti-sparkles" style="font-size:14px;" aria-hidden="true"></i>리뷰 피드백</p><p>${c.synthesized}</p></div>`
-      : `<div class="feedback-note empty"><p class="ftag">리뷰 피드백</p><p>코멘트 없음</p></div>`;
-    return `
-    <div class="agent-feedback-card">
-      <div class="fhead">
-        <div>
-          <p class="ctitle">${c.title}</p>
-          <p class="csub">${sub}</p>
-        </div>
-        <span class="avgscore">평균 ${avg} / 100</span>
-      </div>
-      ${note}
+requireAdmin().then(ok => {
+  if (!ok) return;
+  loadData().then(() => {
+    app.style.opacity = '1';
+    renderSummary();
+    renderCompare(currentAgent);
+    renderList();
+  }).catch(err => {
+    app.style.opacity = '1';
+    app.innerHTML = `<div style="padding:40px; text-align:center; color:var(--ink-soft);">
+      데이터를 불러오지 못했습니다. SUPABASE_URL / SUPABASE_ANON_KEY 설정을 확인해주세요.<br>
+      <span style="font-size:12px;">${err.message || err}</span>
     </div>`;
-  }).join('');
-}
-
-init().catch(err => {
-  document.getElementById('agentCards').innerHTML = `<div class="agent-feedback-card">
-    <p class="csub" style="margin:0;">데이터를 불러오지 못했습니다. SUPABASE_URL / SUPABASE_ANON_KEY 설정을 확인해주세요.<br>
-    <span style="font-size:12px;">${err.message || err}</span></p>
-  </div>`;
-  console.error(err);
+    console.error(err);
+  });
 });
 </script>
 </body>
