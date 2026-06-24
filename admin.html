@@ -807,7 +807,7 @@ function consultRow(c){
   return `
     <div class="consult-row" onclick="openDetail('${c.id}')">
       <div>
-        <p class="ctitle">${c.title}</p>
+        <p class="ctitle">${c.title} <a href="https://desk.channel.io/conversations/${c.id}" target="_blank" onclick="event.stopPropagation()" style="font-size:11px; color:var(--teal); font-weight:600; text-decoration:none; margin-left:6px;">↗</a></p>
         <p class="csub">${c.sub}</p>
       </div>
       <div class="right">
@@ -1112,6 +1112,9 @@ function renderDetail(id){
       <div>
         <p class="ctitle">${c.title}</p>
         <p class="csub">${c.sub}</p>
+        <a href="https://desk.channel.io/conversations/${c.id}" target="_blank" style="font-size:12px; color:var(--teal); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:6px;">
+          채널톡에서 보기 →
+        </a>
       </div>
       <span class="status ${detailCls}">${detailLabel}</span>
     </div>
