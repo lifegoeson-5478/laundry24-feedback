@@ -211,6 +211,14 @@
     font-family:inherit; font-size:12px; font-weight:600; color:var(--coral);
     background:var(--coral-soft); border:none; border-radius:999px; padding:6px 12px; cursor:pointer;
   }
+  .sub-tab{
+    font-family:inherit; font-size:13px; font-weight:600;
+    padding:7px 16px; border:1px solid var(--line); border-radius:999px;
+    background:var(--card); color:var(--ink-soft); cursor:pointer;
+    transition:all .15s ease;
+  }
+  .sub-tab.active{ background:var(--teal-soft); color:var(--teal); border-color:var(--teal); }
+  .sub-tab:hover:not(.active){ border-color:var(--teal); color:var(--teal); }
 
   @media (max-width:640px){
     .account-form{grid-template-columns:1fr 1fr;}
@@ -372,40 +380,53 @@
 
   <!-- ===== VIEW 5: 계정 관리 ===== -->
   <div class="view" id="view-accounts">
-    <p class="week-label">구글 로그인 이메일별로 역할(어드민/담당자)과 매칭되는 담당자를 설정합니다.</p>
-
-    <div class="account-form">
-      <input type="email" id="accEmail" placeholder="이메일 (예: name@laundry24.com)">
-      <select id="accRole" onchange="onAccRoleChange()">
-        <option value="agent">담당자</option>
-        <option value="admin">어드민</option>
-      </select>
-      <select id="accAgent">
-        <option value="">담당자 선택</option>
-      </select>
-      <input type="text" id="accName" placeholder="표시 이름 (예: 박서준)">
-      <button class="add-btn" onclick="addAccount()">추가</button>
+    <div style="display:flex; gap:6px; margin-bottom:18px;">
+      <button class="sub-tab active" data-sub="accounts" onclick="showSubTab('accounts')">계정</button>
+      <button class="sub-tab" data-sub="agents" onclick="showSubTab('agents')">담당자</button>
+      <button class="sub-tab" data-sub="escalation" onclick="showSubTab('escalation')">민원 이관</button>
     </div>
 
-    <div class="consult-list" id="accountList"></div>
-
-    <p class="week-label" style="margin-top:2rem;">담당자 관리 · 담당자를 추가하거나 삭제할 수 있습니다.</p>
-    <div class="account-form" style="grid-template-columns:1fr 1fr auto;">
-      <input type="text" id="agentName" placeholder="이름 (예: 홍길동)">
-      <input type="text" id="agentChanneltalkId" placeholder="채널톡 ID (예: 639261)">
-      <button class="add-btn" onclick="addAgent()">추가</button>
+    <!-- 서브탭 1: 계정 -->
+    <div id="sub-accounts" class="sub-view">
+      <p class="week-label">구글 로그인 이메일별로 역할(어드민/담당자)과 매칭되는 담당자를 설정합니다.</p>
+      <div class="account-form">
+        <input type="email" id="accEmail" placeholder="이메일 (예: name@laundry24.com)">
+        <select id="accRole" onchange="onAccRoleChange()">
+          <option value="agent">담당자</option>
+          <option value="admin">어드민</option>
+        </select>
+        <select id="accAgent">
+          <option value="">담당자 선택</option>
+        </select>
+        <input type="text" id="accName" placeholder="표시 이름 (예: 박서준)">
+        <button class="add-btn" onclick="addAccount()">추가</button>
+      </div>
+      <div class="consult-list" id="accountList"></div>
     </div>
-    <div class="consult-list" id="agentList"></div>
 
-    <p class="week-label" style="margin-top:2rem;">민원 이관 기록 · 날짜별로 담당자/건수를 등록하세요.</p>
-    <div class="account-form" id="escalationForm" style="grid-template-columns:1fr 1fr 80px 1fr auto;">
-      <input type="date" id="escDate">
-      <select id="escAgent"></select>
-      <input type="number" id="escCount" min="1" value="1">
-      <input type="text" id="escNote" placeholder="메모 (선택)">
-      <button class="add-btn" onclick="addEscalationLog()">추가</button>
+    <!-- 서브탭 2: 담당자 -->
+    <div id="sub-agents" class="sub-view" style="display:none;">
+      <p class="week-label">담당자를 추가하거나 삭제할 수 있습니다. 채널톡 ID는 fetch-channeltalk?resource=managers 에서 확인하세요.</p>
+      <div class="account-form" style="grid-template-columns:1fr 1fr auto;">
+        <input type="text" id="agentName" placeholder="이름 (예: 홍길동)">
+        <input type="text" id="agentChanneltalkId" placeholder="채널톡 ID (예: 639261)">
+        <button class="add-btn" onclick="addAgent()">추가</button>
+      </div>
+      <div class="consult-list" id="agentList"></div>
     </div>
-    <div id="escalationLogList" class="consult-list"></div>
+
+    <!-- 서브탭 3: 민원 이관 -->
+    <div id="sub-escalation" class="sub-view" style="display:none;">
+      <p class="week-label">날짜별로 담당자/건수를 등록하세요. 선택한 기간에 맞게 주간요약/비교 화면에 반영됩니다.</p>
+      <div class="account-form" id="escalationForm" style="grid-template-columns:1fr 1fr 80px 1fr auto;">
+        <input type="date" id="escDate">
+        <select id="escAgent"></select>
+        <input type="number" id="escCount" min="1" value="1">
+        <input type="text" id="escNote" placeholder="메모 (선택)">
+        <button class="add-btn" onclick="addEscalationLog()">추가</button>
+      </div>
+      <div id="escalationLogList" class="consult-list"></div>
+    </div>
   </div>
 
 </div>
@@ -1278,6 +1299,13 @@ window.cancelRecontact = cancelRecontact;
 window.confirmRecontact = confirmRecontact;
 window.saveDraft = saveDraft;
 window.completeReview = completeReview;
+function showSubTab(name){
+  ['accounts','agents','escalation'].forEach(t => {
+    document.getElementById('sub-' + t).style.display = t === name ? '' : 'none';
+    document.querySelector(`.sub-tab[data-sub="${t}"]`).classList.toggle('active', t === name);
+  });
+}
+window.showSubTab = showSubTab;
 window.addAgent = addAgent;
 window.deleteAgent = deleteAgent;
 window.onAccRoleChange = onAccRoleChange;
